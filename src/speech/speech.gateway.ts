@@ -202,17 +202,17 @@ export class SpeechGateway
   // ─────────────────────────────
 
   private destroySession(socketId: string) {
-    const session = this.sessions.get(socketId);
-    if (!session) return;
+  const session = this.sessions.get(socketId);
+  if (!session) return;
 
-    try {
-      session.recognizeStream.end();
-    } catch {}
+  try {
+    session.recognizeStream.end();
+  } catch {}
 
-    try {
-      session.recognizeStream.destroy();
-    } catch {}
+  try {
+    session.recognizeStream.destroy();
+  } catch {}
 
-    this.sessions.delete(socketId);
-  }
+  this.sessions.delete(socketId);
+}
 }

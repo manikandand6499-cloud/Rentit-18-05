@@ -158,31 +158,29 @@ this.client = new speech.SpeechClient({
    createStreamingSession(config: StreamConfig): any {
   const recognizer = `projects/${this.projectId}/locations/global/recognizers/_`;
 
-  const stream = (this.client as any).streamingRecognize();
+ const stream = this.client.streamingRecognize();
 
-  // ✅ VERY IMPORTANT: send config FIRST and correct structure
-  stream.write({
-    recognizer,
-    streamingConfig: {
-      config: {
-        autoDecodingConfig: {}, // 🔥 REQUIRED
-        languageCodes: [
-          config.languageCode,
-          ...(config.alternativeLanguageCodes ?? []),
-        ],
-        model: config.model ?? 'chirp_2',
-        features: {
-          enableAutomaticPunctuation: true,
-        },
-      },
-      streamingFeatures: {
-        interimResults: true,
+stream.write({
+  recognizer: recognizer,
+  streamingConfig: {
+    config: {
+      autoDecodingConfig: {},
+      languageCodes: [
+        config.languageCode,
+        ...(config.alternativeLanguageCodes ?? []),
+      ],
+      model: config.model ?? 'latest_short',
+      features: {
+        enableAutomaticPunctuation: true,
       },
     },
-  });
+    streamingFeatures: {
+      interimResults: true,
+    },
+  },
+});
 
-  return stream;
-}
+// 🚨 VERY IMPORTANT: DO NOT send config again
   // ──────────────────────────────────────────
   // HELPERS
   // ──────────────────────────────────────────
