@@ -172,12 +172,12 @@ createStreamingSession(config: StreamConfig): any {
     },
   };
 
-  const stream = (this.client as any).streamingRecognize();
+const stream = this.client.streamingRecognize();
 
-  // ✅ send config first
-  stream.write({
-    streamingConfig,
-  });
+// ✅ send config FIRST (only once)
+stream.write({
+  streamingConfig,
+});
 
   return stream;
 }
