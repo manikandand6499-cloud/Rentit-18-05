@@ -155,33 +155,34 @@ this.client = new speech.SpeechClient({
   //    Returns duplex stream for WebSocket gateway
   //    Feeds real-time audio chunks from Flutter mic
   // ──────────────────────────────────────────
-createStreamingSession(config: StreamConfig): any {
+   createStreamingSession(config: StreamConfig): any {
   const recognizer = `projects/${this.projectId}/locations/global/recognizers/_`;
 
-  const streamingConfig: any = {
+  const stream = (this.client as any).streamingRecognize();
+
+  // ✅ VERY IMPORTANT: send config FIRST and correct structure
+  stream.write({
     recognizer,
-    config: {
-      languageCodes: [
-        config.languageCode,
-        ...(config.alternativeLanguageCodes ?? []),
-      ],
-      model: config.model ?? 'chirp_2',
-      features: {
-        enableAutomaticPunctuation: true,
+    streamingConfig: {
+      config: {
+        autoDecodingConfig: {}, // 🔥 REQUIRED
+        languageCodes: [
+          config.languageCode,
+          ...(config.alternativeLanguageCodes ?? []),
+        ],
+        model: config.model ?? 'chirp_2',
+        features: {
+          enableAutomaticPunctuation: true,
+        },
+      },
+      streamingFeatures: {
+        interimResults: true,
       },
     },
-  };
-
-const stream = this.client.streamingRecognize();
-
-// ✅ send config FIRST (only once)
-stream.write({
-  streamingConfig,
-});
+  });
 
   return stream;
 }
-
   // ──────────────────────────────────────────
   // HELPERS
   // ──────────────────────────────────────────
