@@ -55,7 +55,7 @@ export class SpeechGateway
     @MessageBody()
    payload: {
   language?: string;
-  model?: SpeechModel; ✅
+  model?: SpeechModel;
 } = {},
   ) {
     // 🔥 Clean old session
