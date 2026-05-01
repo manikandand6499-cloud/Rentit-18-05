@@ -56,17 +56,19 @@ export class SpeechService {
   private readonly client: speech.SpeechClient;
   private readonly projectId: string;
 
-  constructor() {
-    // Auth via GOOGLE_APPLICATION_CREDENTIALS env var
-this.client = new speech.SpeechClient({
-  credentials: JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON!),
-});
-    this.projectId = process.env.GOOGLE_CLOUD_PROJECT_ID!;
+constructor() {
+  this.client = new speech.SpeechClient({
+    keyFilename: process.env.GOOGLE_APPLICATION_CREDENTIALS,
+  });
 
-    if (!this.projectId) {
-      throw new Error('GOOGLE_CLOUD_PROJECT_ID env variable is required');
-    }
+  this.projectId = process.env.GOOGLE_CLOUD_PROJECT_ID!;
+
+  if (!this.projectId) {
+    throw new Error('GOOGLE_CLOUD_PROJECT_ID env variable is required');
   }
+
+  console.log('KEY FILE:', process.env.GOOGLE_APPLICATION_CREDENTIALS);
+}
 
   // ──────────────────────────────────────────
   // 1. TRANSCRIBE AUDIO FILE (REST Upload)
@@ -155,32 +157,43 @@ this.client = new speech.SpeechClient({
   //    Returns duplex stream for WebSocket gateway
   //    Feeds real-time audio chunks from Flutter mic
   // ──────────────────────────────────────────
-   createStreamingSession(config: StreamConfig): any {
-  const recognizer = `projects/${this.projectId}/locations/global/recognizers/_`;
+  createStreamingSession(config: StreamConfig) {
+    const recognizer = `projects/${this.projectId}/locations/global/recognizers/_`;
 
- const stream = this.client.streamingRecognize();
-
-stream.write({
-  recognizer: recognizer,
-  streamingConfig: {
-    config: {
-      autoDecodingConfig: {},
-      languageCodes: [
-        config.languageCode,
-        ...(config.alternativeLanguageCodes ?? []),
-      ],
-      model: config.model ?? 'latest_short',
-      features: {
-        enableAutomaticPunctuation: true,
+    const streamingConfig: any = {
+      recognizer,
+      config: {
+        languageCodes: [
+          config.languageCode,
+          ...(config.alternativeLanguageCodes ?? []),
+        ],
+        model: config.model ?? 'chirp_2',
+        features: {
+          enableAutomaticPunctuation: config.enableAutoPunctuation ?? true,
+          enableWordTimeOffsets: config.enableWordTimeOffsets ?? false,
+          enableWordConfidence: true,
+        },
       },
-    },
-    streamingFeatures: {
-      interimResults: true,
-    },
-  },
-});
+      streamingFeatures: {
+        interimResults: true,
+        enableVoiceActivityEvents: true,
+      },
+    };
 
-// 🚨 VERY IMPORTANT: DO NOT send config again
+    // Set encoding config
+    if (config.encoding === 'LINEAR16') {
+      streamingConfig.config.explicitDecodingConfig = {
+        encoding: 'LINEAR16',
+        sampleRateHertz: config.sampleRateHertz ?? 16000,
+        audioChannelCount: 1,
+      };
+    } else {
+      streamingConfig.config.autoDecodingConfig = {};
+    }
+
+    return (this.client as any).streamingRecognize(streamingConfig);
+  }
+
   // ──────────────────────────────────────────
   // HELPERS
   // ──────────────────────────────────────────

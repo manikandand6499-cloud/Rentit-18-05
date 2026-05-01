@@ -1,3 +1,4 @@
+// property.controller.ts
 import {
   Controller,
   Post,
@@ -11,16 +12,15 @@ import {
   UploadedFile,
   UseInterceptors,
   Query,
+  BadRequestException,
 } from '@nestjs/common';
 
 import { FilesInterceptor, FileInterceptor } from '@nestjs/platform-express';
-import { ParseIntPipe } from '@nestjs/common';
 
 import { PropertyService } from './property.service';
 import { CreateBasicDto } from './dto/create-basic.dto';
 import { CreateDetailsDto } from './dto/create-details.dto';
 import { CreateAmenitiesDto } from './dto/create-amenities.dto';
-// import { CreatePriceDto } from './dto/create-price.dto';
 import { CreateContactDto } from './dto/create-contact.dto';
 
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -35,7 +35,7 @@ export class PropertyController {
 
   /*
   ==============================
-  STEP 1 - BASIC
+  CREATE BASIC
   ==============================
   */
   @Post('basic')
@@ -45,50 +45,37 @@ export class PropertyController {
 
   /*
   ==============================
-  STEP 1 - LOCATION
+  LOCATION
   ==============================
   */
-
   @Put('location/:id')
   updateLocation(@Param('id') id: string, @Req() req, @Body() dto: UpdateLocationDto) {
-    return this.propertyService.updateLocation(
-      Number(id),
-      req.user.userId,
-      dto,
-    );
+    return this.propertyService.updateLocation(Number(id), req.user.userId, dto);
   }
 
   /*
   ==============================
-  STEP 2 - DETAILS
+  DETAILS
   ==============================
   */
   @Put(':id/details')
   updateDetails(@Param('id') id: string, @Req() req, @Body() dto: CreateDetailsDto) {
-    return this.propertyService.updateDetails(
-      Number(id),
-      req.user.userId,
-      dto,
-    );
+    return this.propertyService.updateDetails(Number(id), req.user.userId, dto);
   }
 
   /*
   ==============================
-  STEP 3 - AMENITIES
+  AMENITIES
   ==============================
   */
   @Put(':id/amenities')
   updateAmenities(@Param('id') id: string, @Req() req, @Body() dto: CreateAmenitiesDto) {
-    return this.propertyService.updateAmenities(
-      Number(id),
-      req.user.userId,
-      dto,
-    );
+    return this.propertyService.updateAmenities(Number(id), req.user.userId, dto);
   }
 
   /*
   ==============================
-  STEP 5 - IMAGES (R2)
+  UPLOAD IMAGES
   ==============================
   */
   @Post(':id/upload-images')
@@ -116,69 +103,37 @@ export class PropertyController {
 
   /*
   ==============================
-  STEP 5 - VIDEO (R2)
+  UPLOAD VIDEO
   ==============================
   */
-@Post(':id/upload-video')
-@UseInterceptors(
-  FileInterceptor('file', {
-    limits: { fileSize: 100 * 1024 * 1024 },
-  }),
-)
-async uploadVideo(
-  @Param('id') id: string,
-  @Req() req,
-  @UploadedFile() file: Express.Multer.File,
-) {
-  console.log("FILE RECEIVED:", file);
+  @Post(':id/upload-video')
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 100 * 1024 * 1024 } }))
+  async uploadVideo(@Param('id') id: string, @Req() req, @UploadedFile() file: Express.Multer.File) {
+    if (!file) throw new BadRequestException("No video file");
 
-  if (!file) {
-    throw new Error("No video file received"); // 🔥 force error
+    const url = await uploadToR2(file);
+
+    return this.propertyService.saveVideo(Number(id), req.user.userId, url);
   }
-
-  const url = await uploadToR2(file);
-
-  console.log("VIDEO URL:", url); // 🔥 debug
-
-  if (!url) {
-    throw new Error("Upload failed - URL missing");
-  }
-
-  return await this.propertyService.saveVideo(
-    Number(id),
-    req.user.userId,
-    url,
-  );
-}
-  /*
-  ==============================
-  STEP 6 - CONTACT
-  ==============================
-  */
-@Put(':id/contact')
-updateContact(
-  @Param('id') id: string,
-  @Req() req,
-  @Body() dto: CreateContactDto,
-) {
-  return this.propertyService.updateContact(
-    Number(id),
-    req.user.userId,
-    dto,
-  );
-}
 
   /*
   ==============================
-  STEP 7 - VERIFY
+  CONTACT
+  ==============================
+  */
+  @Put(':id/contact')
+  updateContact(@Param('id') id: string, @Req() req, @Body() dto: CreateContactDto) {
+    return this.propertyService.updateContact(Number(id), req.user.userId, dto);
+  }
+
+  /*
+  ==============================
+  VERIFY
   ==============================
   */
   @Put(':id/verify')
   verifyProperty(@Param('id') id: string, @Req() req) {
-    return this.propertyService.verifyProperty(
-      Number(id),
-      req.user.userId,
-    );
+    return this.propertyService.verifyProperty(Number(id), req.user.userId);
   }
 
   /*
@@ -186,14 +141,10 @@ updateContact(
   GET ALL
   ==============================
   */
- @Get('all')
-getAllProperties(@Req() req) {
-  const userId = req.user.userId;
-
-  return this.propertyService.getAllProperties(userId);
-}
-
-
+  @Get('all')
+  getAllProperties(@Req() req) {
+    return this.propertyService.getAllProperties(req.user.userId);
+  }
 
   /*
   ==============================
@@ -207,15 +158,30 @@ getAllProperties(@Req() req) {
 
   /*
   ==============================
+  🔥 IMPORTANT FIX
+  STATIC ROUTE FIRST
+  ==============================
+  */
+  @Get('recently-viewed')
+  getRecentlyViewed(@Req() req) {
+    return this.propertyService.getRecentlyViewed(req.user.userId);
+  }
+
+  /*
+  ==============================
   SINGLE PROPERTY
   ==============================
   */
- 
+  @Get(':id') // 🔥 ONLY NUMBER ALLOWED
+  getProperty(@Param('id') id: string) {
+    const numId = Number(id);
 
-  @Get(':id')
-getProperty(@Param('id', ParseIntPipe) id: number) {
-  return this.propertyService.getProperty(id);
-}
+    if (!numId || isNaN(numId)) {
+      throw new BadRequestException("Invalid property ID");
+    }
+
+    return this.propertyService.getProperty(numId);
+  }
 
   /*
   ==============================
@@ -224,9 +190,28 @@ getProperty(@Param('id', ParseIntPipe) id: number) {
   */
   @Put(':id/delete')
   deleteProperty(@Param('id') id: string, @Req() req) {
-    return this.propertyService.deleteProperty(
-      Number(id),
-      req.user.userId,
-    );
+    return this.propertyService.deleteProperty(Number(id), req.user.userId);
   }
+
+  /*
+  ==============================
+  VIEW COUNT
+  ==============================
+  */
+  @Post(':id/view')
+  addView(@Param('id') id: string, @Req() req) {
+    const numId = Number(id);
+
+    if (!numId || isNaN(numId)) {
+      throw new BadRequestException("Invalid property ID");
+    }
+
+    return this.propertyService.addView(numId, req.user.userId);
+  }
+
+  @Get('views/count')
+getMyViews(@Req() req) {
+  return this.propertyService.getMyTotalViews(req.user.id);
+}
+
 }

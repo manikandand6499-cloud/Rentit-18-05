@@ -1,8 +1,3 @@
-import * as crypto from 'crypto';
-(global as any).crypto = crypto;
-
-// 🔥 MUST be above ALL imports
-
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
@@ -11,24 +6,24 @@ import * as path from 'path';
 import { NestExpressApplication } from '@nestjs/platform-express';
 
 dotenv.config({
-  path: path.resolve(__dirname, '../.env'),
+  path: path.resolve(__dirname, "../.env"),
 });
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
-  /// ✅ CORS (production-safe)
+  /// ✅ CORS (better config)
   app.enableCors({
-    origin: true,
+    origin: true, // 🔥 allow all dynamically
     credentials: true,
   });
 
-  /// ✅ GLOBAL VALIDATION
+  /// ✅ VALIDATION (important)
   app.useGlobalPipes(
     new ValidationPipe({
-      whitelist: true,
-      transform: true,
-      forbidNonWhitelisted: true,
+      whitelist: true,        // removes unwanted fields
+      transform: true,        // auto type convert (string → number)
+      forbidNonWhitelisted: true, // 🔥 security
     }),
   );
 
@@ -37,11 +32,10 @@ async function bootstrap() {
     prefix: '/uploads/',
   });
 
-  /// ✅ PORT
   const port = process.env.PORT || 5000;
   await app.listen(port);
 
-  console.log(`🚀 Server running on port ${port}`);
+  console.log(`🚀 Server running on http://localhost:${port}`);
 }
 
 bootstrap();

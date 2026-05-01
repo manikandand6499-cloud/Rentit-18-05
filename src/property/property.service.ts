@@ -1,20 +1,18 @@
-// property.service.ts
+
+// // property.service.ts
+
 import {
   Injectable,
   NotFoundException,
-  Param,
   UnauthorizedException,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+
 import { CreateBasicDto } from './dto/create-basic.dto';
 import { CreateDetailsDto } from './dto/create-details.dto';
 import { CreateAmenitiesDto } from './dto/create-amenities.dto';
-// import { CreatePriceDto } from './dto/create-price.dto';
 import { CreateContactDto } from './dto/create-contact.dto';
 import { UpdateLocationDto } from './dto/location.dto';
-import { UpdateAvailabilityDto } from './dto/availability.dto';
-import { CreateAdditionalDto } from './dto/create-additional.dto';
-import { CreateAdditionalDetailsDto } from './dto/create-residential-additional-details.dto';
 
 @Injectable()
 export class PropertyService {
@@ -29,9 +27,9 @@ export class PropertyService {
     return this.prisma.property.create({
       data: {
         userId,
-        city: data.city ?? "Chennai",
-        locality: data.locality ?? "Unknown",
-        propertyType: data.propertyType || "PG",
+        city: data.city ?? 'Chennai',
+        locality: data.locality ?? 'Unknown',
+        propertyType: data.propertyType || 'PG',
         propertyName: data.propertyName ?? undefined,
         currentStep: 1,
       },
@@ -43,7 +41,7 @@ export class PropertyService {
   STEP 2 — DETAILS
   ============================
   */
-async updateDetails(id: number, userId: number, data: CreateDetailsDto) {
+  async updateDetails(id: number, userId: number, data: CreateDetailsDto) {
   await this.checkPropertyOwner(id, userId);
 
   console.log("BODY:", data);
@@ -101,36 +99,34 @@ async updateDetails(id: number, userId: number, data: CreateDetailsDto) {
     },
   });
 }
+
   /*
   ============================
   STEP 3 — AMENITIES
   ============================
   */
   async updateAmenities(id: number, userId: number, data: CreateAmenitiesDto) {
-  await this.checkPropertyOwner(id, userId);
+    await this.checkPropertyOwner(id, userId);
 
-  return this.prisma.property.update({
-    where: { id },
-    data: {
-      foodIncluded: data.foodIncluded ?? undefined,
-      foodType: data.foodType ?? undefined,
+    return this.prisma.property.update({
+      where: { id },
+      data: {
+        foodIncluded: data.foodIncluded ?? undefined,
+        foodType: data.foodType ?? undefined,
+        parking: data.parking ?? undefined,
+        pgAmenities: data.pgAmenities ?? undefined,
+        restrictions: data.restrictions ?? undefined,
+        propertyDescription: data.propertyDescription ?? undefined,
+        currentStep: 3,
+      },
+    });
+  }
 
-      parking: data.parking ?? undefined,
-
-      /// ✅ MAIN FIELD
-      pgAmenities: data.pgAmenities ?? undefined,
-
-          restrictions: data.restrictions ?? undefined,
-
-
-      propertyDescription: data.propertyDescription ?? undefined,
-
-      currentStep: 3,
-    },
-  });
-}
-
- 
+  /*
+  ============================
+  STEP 4 — LOCATION
+  ============================
+  */
   async updateLocation(id: number, userId: number, data: UpdateLocationDto) {
     await this.checkPropertyOwner(id, userId);
 
@@ -146,7 +142,7 @@ async updateDetails(id: number, userId: number, data: CreateDetailsDto) {
 
   /*
   ============================
-  STEP 5 — IMAGES
+  STEP 5 — MEDIA
   ============================
   */
   async saveImages(id: number, userId: number, images: string[]) {
@@ -178,28 +174,22 @@ async updateDetails(id: number, userId: number, data: CreateDetailsDto) {
   async updateContact(id: number, userId: number, data: CreateContactDto) {
     await this.checkPropertyOwner(id, userId);
 
-   return this.prisma.property.update({
-  where: { id },
-  data: {
-    contactName: data.contactName ?? undefined,
-    mobileNo: data.mobileNo ?? undefined,
-    whatsapp: data.whatsapp ?? undefined,
-    whatsappupdates: data.whatsappupdates ?? undefined,
-
-    currentStep: 6,
-    isDraft: false,
-  },
-});
+    return this.prisma.property.update({
+      where: { id },
+      data: {
+        contactName: data.contactName ?? undefined,
+        mobileNo: data.mobileNo ?? undefined,
+        whatsapp: data.whatsapp ?? undefined,
+        whatsappupdates: data.whatsappupdates ?? undefined,
+        currentStep: 6,
+        isDraft: false,
+      },
+    });
   }
-
-
-
-
-  
 
   /*
   ============================
-  STEP 7 — PUBLISH
+  STEP 7 — VERIFY
   ============================
   */
   async verifyProperty(id: number, userId: number) {
@@ -220,17 +210,26 @@ async updateDetails(id: number, userId: number, data: CreateDetailsDto) {
   ============================
   */
   async getAllProperties(userId: number) {
-  return this.prisma.property.findMany({
-    where: {
-      isDeleted: false,
-
-      // 🔥 MAIN FIX
-      userId: {
-        not: userId,
+    return this.prisma.property.findMany({
+      where: {
+        isDeleted: false,
+        userId: { not: userId },
       },
-    },
-    orderBy: {
-      createdAt: "desc",
+      orderBy: { createdAt: 'desc' },
+      include: {
+        _count: {
+          select: { propertyViews: true },
+        },
+      },
+    });
+  }
+
+  async getMyTotalViews(userId: number) {
+  return this.prisma.propertyView.count({
+    where: {
+      property: {
+        userId: userId,
+      },
     },
   });
 }
@@ -238,25 +237,23 @@ async updateDetails(id: number, userId: number, data: CreateDetailsDto) {
   async getMyProperties(userId: number) {
     return this.prisma.property.findMany({
       where: { userId },
-      orderBy: { createdAt: "desc" },
+      orderBy: { createdAt: 'desc' },
     });
   }
 
- async getProperty(id?: number) {
-  if (!id || isNaN(id)) {
-    throw new NotFoundException("Invalid property ID");
+  async getProperty(id: number) {
+    if (!id || isNaN(id)) {
+      throw new NotFoundException('Invalid property ID');
+    }
+
+    const property = await this.prisma.property.findUnique({
+      where: { id },
+    });
+
+    if (!property) throw new NotFoundException('Property not found');
+
+    return property;
   }
-
-  const property = await this.prisma.property.findUnique({
-    where: { id },
-  });
-
-  if (!property) {
-    throw new NotFoundException("Property not found");
-  }
-
-  return property;
-}
 
   /*
   ============================
@@ -268,8 +265,46 @@ async updateDetails(id: number, userId: number, data: CreateDetailsDto) {
 
     return this.prisma.property.update({
       where: { id },
-      data: {
-        isDeleted: true,
+      data: { isDeleted: true },
+    });
+  }
+
+  /*
+  ============================
+  VIEW SYSTEM
+  ============================
+  */
+  async addView(propertyId: number, userId: number) {
+    try {
+      await this.prisma.propertyView.create({
+        data: { propertyId, userId },
+      });
+    } catch {
+      // ignore duplicate
+    }
+
+    return { success: true };
+  }
+
+  async getViewCount(propertyId: number) {
+    return this.prisma.propertyView.count({
+      where: { propertyId },
+    });
+  }
+
+  async getRecentlyViewed(userId: number) {
+    return this.prisma.propertyView.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+      take: 10,
+      include: {
+        property: {
+          include: {
+            _count: {
+              select: { propertyViews: true },
+            },
+          },
+        },
       },
     });
   }
@@ -284,10 +319,10 @@ async updateDetails(id: number, userId: number, data: CreateDetailsDto) {
       where: { id },
     });
 
-    if (!property) throw new NotFoundException("Property not found");
+    if (!property) throw new NotFoundException('Property not found');
 
     if (property.userId !== userId) {
-      throw new UnauthorizedException("Not allowed");
+      throw new UnauthorizedException('Not allowed');
     }
   }
 }

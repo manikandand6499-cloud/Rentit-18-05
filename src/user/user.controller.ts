@@ -1,3 +1,5 @@
+// user.controller.ts
+
 import {
   Controller,
   Get,
@@ -8,6 +10,7 @@ import {
 } from '@nestjs/common';
 import { UserService } from './user.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { UpdateUserLocationDto } from 'src/user/dto/location.dto';
 
 @Controller('user')
 @UseGuards(JwtAuthGuard)
@@ -28,4 +31,11 @@ export class UserController {
       body,
     );
   }
+
+@Put('location')
+updateLocation(@Req() req, @Body() dto: UpdateUserLocationDto) {
+  console.log("🔥 LOCATION API HIT");
+  console.log(dto);
+  return this.userService.updateLocation(req.user.userId, dto);
+}
 }
