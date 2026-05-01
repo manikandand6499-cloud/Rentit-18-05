@@ -53,10 +53,10 @@ export class SpeechGateway
   handleStartStream(
     @ConnectedSocket() client: Socket,
     @MessageBody()
-    payload: {
-      language?: string;
-      model?: string;
-    } = {},
+   payload: {
+  language?: string;
+  model?: SpeechModel; ✅
+} = {},
   ) {
     // 🔥 Clean old session
     this.destroySession(client.id);
