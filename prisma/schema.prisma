@@ -15,12 +15,19 @@ model User {
   isProfileComplete Boolean  @default(false)
   name              String?
 
+  // ✅ ADD THIS
+  latitude   Float?
+  longitude  Float?
+  city       String?
+  area       String?
+  locality   String?
+
   likes         Like[]
   properties    Property[]
   subscriptions Subscription[]
   visits        Visit[]
+  propertyViews PropertyView[]
 
-  /// ✅ CORRECT
   sentMessages     Message[] @relation("Sender")
   receivedMessages Message[] @relation("Receiver")
 }
@@ -107,6 +114,7 @@ model Property {
   id     Int @id @default(autoincrement())
   userId Int
 
+  // 📍 BASIC INFO
   city      String
   locality  String
   street    String?
@@ -114,60 +122,69 @@ model Property {
   latitude  Float?
   longitude Float?
 
+  // 🏠 PROPERTY INFO
   propertyName String?
   propertyType String
 
+  // 🛏 ROOM DETAILS
   roomType Json?
 
+  // 🍽 FACILITIES
   foodIncluded Boolean?
   foodType     Json?
+
   pgAmenities  Json?
 
   parking String?
 
-  /// 🔥 ADD THIS
-  price Int?
-
-  /// 🔥 AI + ranking
-  isVerified Boolean @default(false)
-  boostScore Int @default(0)
-  viewCount  Int @default(0)
-
+  // ⏰ AVAILABILITY
   availableFrom   DateTime?
   noticePeriod    Int?
   gateClosingTime DateTime?
 
+  // 📸 MEDIA
   images String[] @default([])
   video  String?
 
+  // 📞 CONTACT
   contactName     String?
   mobileNo        String?
   whatsapp        Boolean?
   whatsappupdates Boolean?
 
+  // 👥 PREFERENCES
   preferredTenant Json?
   preferredGuests Json?
 
+  // 🔒 OTHER
   restrictions        Json?
   propertyDescription String?
 
+  // ⚙️ SYSTEM
   currentStep Int      @default(1)
   isDraft     Boolean  @default(true)
   isDeleted   Boolean  @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  user     User    @relation(fields: [userId], references: [id])
-  likes    Like[]
-  visits   Visit[]
+  // 🔗 RELATIONS
+  user   User    @relation(fields: [userId], references: [id])
+  likes  Like[]
+  visits Visit[]
   messages Message[] @relation("PropertyMessages")
+   propertyViews PropertyView[]
+}
 
-  /// 🔥 INDEXES
-  @@index([city])
-  @@index([locality])
-  @@index([propertyType])
-  @@index([foodIncluded])
-  @@index([latitude, longitude])
+model PropertyView {
+  id         Int      @id @default(autoincrement())
+  userId     Int
+  propertyId Int
+  createdAt  DateTime @default(now())
+
+  user     User     @relation(fields: [userId], references: [id])
+  property Property @relation(fields: [propertyId], references: [id])
+
+  @@unique([userId, propertyId])
 }
 
 model Message {
