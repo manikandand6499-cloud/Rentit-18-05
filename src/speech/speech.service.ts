@@ -155,48 +155,32 @@ this.client = new speech.SpeechClient({
   //    Returns duplex stream for WebSocket gateway
   //    Feeds real-time audio chunks from Flutter mic
   // ──────────────────────────────────────────
-  createStreamingSession(config: StreamConfig) {
-    const recognizer = `projects/${this.projectId}/locations/global/recognizers/_`;
+createStreamingSession(config: StreamConfig): any {
+  const recognizer = `projects/${this.projectId}/locations/global/recognizers/_`;
 
-    const streamingConfig: any = {
-      recognizer,
-      config: {
-        languageCodes: [
-          config.languageCode,
-          ...(config.alternativeLanguageCodes ?? []),
-        ],
-        model: config.model ?? 'chirp_2',
-        features: {
-          enableAutomaticPunctuation: config.enableAutoPunctuation ?? true,
-          enableWordTimeOffsets: config.enableWordTimeOffsets ?? false,
-          enableWordConfidence: true,
-        },
+  const streamingConfig: any = {
+    recognizer,
+    config: {
+      languageCodes: [
+        config.languageCode,
+        ...(config.alternativeLanguageCodes ?? []),
+      ],
+      model: config.model ?? 'chirp_2',
+      features: {
+        enableAutomaticPunctuation: true,
       },
-      streamingFeatures: {
-        interimResults: true,
-        enableVoiceActivityEvents: true,
-      },
-    };
+    },
+  };
 
-    // Set encoding config
-    if (config.encoding === 'LINEAR16') {
-      streamingConfig.config.explicitDecodingConfig = {
-        encoding: 'LINEAR16',
-        sampleRateHertz: config.sampleRateHertz ?? 16000,
-        audioChannelCount: 1,
-      };
-    } else {
-      streamingConfig.config.autoDecodingConfig = {};
-    }
+  const stream = (this.client as any).streamingRecognize();
 
-const stream = this.client.streamingRecognize();
+  // ✅ send config first
+  stream.write({
+    streamingConfig,
+  });
 
-// 🔥 FIRST send config
-stream.write({
-  streamingConfig: streamingConfig,
-});
-
-return stream;  }
+  return stream;
+}
 
   // ──────────────────────────────────────────
   // HELPERS
