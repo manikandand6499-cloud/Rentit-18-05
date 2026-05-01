@@ -12,6 +12,11 @@ yarn-debug.log*
 yarn-error.log*
 lerna-debug.log*
 
+
+# Google Cloud credentials
+key.json
+*.json
+
 # OS
 .DS_Store
 

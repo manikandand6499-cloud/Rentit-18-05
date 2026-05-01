@@ -58,7 +58,9 @@ export class SpeechService {
 
   constructor() {
     // Auth via GOOGLE_APPLICATION_CREDENTIALS env var
-    this.client = new speech.SpeechClient();
+this.client = new speech.SpeechClient({
+  credentials: JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON!),
+});
     this.projectId = process.env.GOOGLE_CLOUD_PROJECT_ID!;
 
     if (!this.projectId) {
