@@ -1,7 +1,7 @@
 import * as crypto from 'crypto';
-
-// 🔥 FIX: required for @nestjs/schedule on Node 18
 (global as any).crypto = crypto;
+
+// 🔥 MUST be above ALL imports
 
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
