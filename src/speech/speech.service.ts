@@ -189,8 +189,14 @@ this.client = new speech.SpeechClient({
       streamingConfig.config.autoDecodingConfig = {};
     }
 
-    return (this.client as any).streamingRecognize(streamingConfig);
-  }
+const stream = this.client.streamingRecognize();
+
+// 🔥 FIRST send config
+stream.write({
+  streamingConfig: streamingConfig,
+});
+
+return stream;  }
 
   // ──────────────────────────────────────────
   // HELPERS
