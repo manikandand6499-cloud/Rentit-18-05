@@ -77,70 +77,52 @@ async get(userId: number) {
 }
 
   // 🔥 RECOMMENDED PROPERTIES (CLEAN + SAFE)
-  async getRecommended(userId: number) {
-    const pref = await this.get(userId);
+async getRecommended(userId: number) {
+  const pref = await this.get(userId);
 
-    if (!pref) return [];
+  if (!pref) return [];
 
-    console.log('🔥 PREF:', pref);
+  return this.prisma.property.findMany({
+    where: {
+      AND: [
+        // 🔥 CITY (strong match)
+        pref.city ? { city: pref.city } : {},
 
-    return this.prisma.property.findMany({
-      where: {
-        // ✅ CITY
-        ...(pref.city && { city: pref.city }),
+        // 🔥 PG FOR (loose match)
+      pref.pgFor
+  ? {
+      preferredTenant: {
+        array_contains: pref.pgFor,
+      },
+    }
+  : {},
 
-        // ✅ PG FOR
-        ...(pref.pgFor && {
-          preferredTenant: {
-            array_contains: pref.pgFor,
-          },
-        }),
+        // 🔥 FOOD
+        pref.foodIncluded !== null && pref.foodIncluded !== undefined
+          ? { foodIncluded: pref.foodIncluded }
+          : {},
 
-        // ✅ Preferred Guests
-        ...(pref.preferredTenant && {
-          preferredGuests: {
-            array_contains: pref.preferredTenant,
-          },
-        }),
-
-        // ✅ FOOD
-        ...(pref.foodIncluded !== null &&
-          pref.foodIncluded !== undefined && {
-            foodIncluded: pref.foodIncluded,
-          }),
-
-        // ✅ PARKING
-        ...(pref.parking === 'Yes' && {
-          parking: {
-            in: ['Car', 'Bike', 'Both'],
-          },
-        }),
-
-        ...(pref.parking === 'No' && {
-          OR: [
-            { parking: null },
-            { parking: 'None' },
-          ],
-        }),
-
-        // ✅ RENT FILTER
-        ...(pref.rentMin || pref.rentMax
+        // 🔥 RENT RANGE (flexible)
+        pref.rentMin || pref.rentMax
           ? {
               roomType: {
                 path: ['rent'],
                 gte: pref.rentMin ?? 0,
-                ...(pref.rentMax && pref.rentMax !== 0
-                  ? { lte: pref.rentMax }
-                  : {}),
+                ...(pref.rentMax ? { lte: pref.rentMax } : {}),
               },
             }
-          : {}),
-      },
+          : {},
+      ],
+    },
 
-   orderBy: this.getSort(pref.premiumSort ?? undefined),
-      take: 20,
-    });
-  }
+    // 🔥 NORMAL SORT (latest + good)
+    orderBy: [
+      { createdAt: 'desc' }, // new PGs first
+    ],
+
+    take: 20,
+  });
+}
 
   // 🔥 SORT HANDLER
   private getSort(sort?: string) {
