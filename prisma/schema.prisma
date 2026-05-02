@@ -57,39 +57,47 @@ model Otp {
   createdAt DateTime @default(now())
 }
 
-
 model UserPreference {
   id        Int      @id @default(autoincrement())
 
-  userId    Int   // ✅ ONLY FIELD
+  userId    Int
 
-  city              String?
-  locality          String?
-  search            String?
+  // 🔥 BASIC FILTERS
+  city            String?
+  locality        String?
+  search          String?
 
-  pgFor             String?
-  sharingTypes      Json?
-  preferredTenant   String?
+  // 🔥 USER TYPE
+  pgFor           String?
+  sharingTypes    Json?
+  preferredTenant String?
 
-  availability      String?
-  parking           String?
-  foodIncluded      Boolean?
+  // 🔥 FEATURES
+  availability    String?
+  parking         String?
+  foodIncluded    Boolean?
 
-  rentMin           Float?
-  rentMax           Float?
+  // 🔥 PRICING (⚠️ use Int for consistency with rent)
+  rentMin         Int?
+  rentMax         Int?
 
-  amenities     Json?
-  nearby        Json?
-  restrictions  Json?
-  premiumSort   String?
+  // 🔥 EXTRA FILTERS
+  amenities       Json?
+  nearby          Json?
+  restrictions    Json?
+  premiumSort     String?
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
-  user User @relation(fields: [userId], references: [id])
+  // 🔥 RELATION
+  user            User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  // ✅ INDEX MUST BE HERE (bottom)
+  // 🔥 INDEX (FAST QUERY)
   @@index([userId])
+
+  // 🔥 OPTIONAL: prevent duplicate same-time entries
+  @@index([userId, createdAt])
 }
 
 model Like {
