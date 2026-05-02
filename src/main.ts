@@ -5,7 +5,6 @@ import * as dotenv from 'dotenv';
 import * as path from 'path';
 import { NestExpressApplication } from '@nestjs/platform-express';
 
-
 dotenv.config({
   path: path.resolve(__dirname, "../.env"),
 });

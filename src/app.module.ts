@@ -13,6 +13,7 @@ import { ChatModule } from "./chat/chat.module";
 import { IvrModule } from "./ivr/ivr.module";
 import { AiModule } from "./ai/ai.module"; // 🔥 ADD THIS
 import { SpeechModule } from "./speech/speech.module";
+import { UserPreferenceModule } from "./user-preference/user-preference.module";
 
 @Module({
   imports: [
@@ -35,7 +36,8 @@ import { SpeechModule } from "./speech/speech.module";
     VisitModule,
     ChatModule,
     IvrModule,
-
+    
+    UserPreferenceModule,
     /// 🧠 AI MODULE (NEW)
     AiModule,
     SpeechModule,

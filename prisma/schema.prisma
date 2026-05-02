@@ -27,6 +27,7 @@ model User {
   subscriptions Subscription[]
   visits        Visit[]
   propertyViews PropertyView[]
+  UserPreference UserPreference[]
 
   sentMessages     Message[] @relation("Sender")
   receivedMessages Message[] @relation("Receiver")
@@ -54,6 +55,41 @@ model Otp {
   otp       String
   expiresAt DateTime
   createdAt DateTime @default(now())
+}
+
+
+model UserPreference {
+  id        Int      @id @default(autoincrement())
+
+  userId    Int   // ✅ ONLY FIELD
+
+  city              String?
+  locality          String?
+  search            String?
+
+  pgFor             String?
+  sharingTypes      Json?
+  preferredTenant   String?
+
+  availability      String?
+  parking           String?
+  foodIncluded      Boolean?
+
+  rentMin           Float?
+  rentMax           Float?
+
+  amenities     Json?
+  nearby        Json?
+  restrictions  Json?
+  premiumSort   String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+
+  // ✅ INDEX MUST BE HERE (bottom)
+  @@index([userId])
 }
 
 model Like {
