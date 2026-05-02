@@ -80,50 +80,71 @@ async get(userId: number) {
 async getRecommended(userId: number) {
   const pref = await this.get(userId);
 
-  if (!pref) return [];
+  if (!pref) {
+    // fallback → show popular
+    return this.prisma.property.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: 20,
+    });
+  }
 
-  return this.prisma.property.findMany({
+  const properties = await this.prisma.property.findMany({
     where: {
-      AND: [
-        // 🔥 CITY (strong match)
-        pref.city ? { city: pref.city } : {},
-
-        // 🔥 PG FOR (loose match)
-      pref.pgFor
-  ? {
-      preferredTenant: {
-        array_contains: pref.pgFor,
-      },
-    }
-  : {},
-
-        // 🔥 FOOD
-        pref.foodIncluded !== null && pref.foodIncluded !== undefined
-          ? { foodIncluded: pref.foodIncluded }
-          : {},
-
-        // 🔥 RENT RANGE (flexible)
-        pref.rentMin || pref.rentMax
-          ? {
-              roomType: {
-                path: ['rent'],
-                gte: pref.rentMin ?? 0,
-                ...(pref.rentMax ? { lte: pref.rentMax } : {}),
-              },
-            }
-          : {},
-      ],
+      isDeleted: false,
+      isDraft: false,
     },
-
-    // 🔥 NORMAL SORT (latest + good)
-    orderBy: [
-      { createdAt: 'desc' }, // new PGs first
-    ],
-
-    take: 20,
+    include: {
+      likes: true,
+      propertyViews: true,
+    },
   });
-}
 
+  // 🔥 SCORING SYSTEM
+  const scored = properties.map((p) => {
+    let score = 0;
+
+    // ✅ CITY MATCH (strong)
+    if (pref.city && p.city === pref.city) score += 5;
+
+    // ✅ TENANT MATCH
+    if (
+      pref.pgFor &&
+      Array.isArray(p.preferredTenant) &&
+      p.preferredTenant.includes(pref.pgFor)
+    ) {
+      score += 3;
+    }
+
+    // ✅ FOOD MATCH
+    if (pref.foodIncluded === p.foodIncluded) score += 2;
+
+    // ✅ RENT MATCH
+    const rent =
+      Array.isArray(p.roomType) && p.roomType.length > 0
+        ? p.roomType[0]?.rent ?? 0
+        : 0;
+
+    if (
+      pref.rentMin &&
+      pref.rentMax &&
+      rent >= pref.rentMin &&
+      rent <= pref.rentMax
+    ) {
+      score += 3;
+    }
+
+    // ✅ POPULARITY
+    score += (p.likes?.length ?? 0) * 0.5;
+    score += (p.propertyViews?.length ?? 0) * 0.2;
+
+    return { ...p, score };
+  });
+
+  // 🔥 SORT BY SCORE
+  return scored
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 20);
+}
   // 🔥 SORT HANDLER
   private getSort(sort?: string) {
     if (sort === 'new') return { createdAt: 'desc' as const };

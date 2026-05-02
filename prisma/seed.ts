@@ -3,116 +3,131 @@ import { faker } from '@faker-js/faker';
 
 const prisma = new PrismaClient();
 
-const chennaiAreas = [
-  'Tambaram',
-  'Velachery',
-  'OMR',
-  'T Nagar',
-  'Porur',
-  'Anna Nagar',
-];
+const cityData: Record<string, string[]> = {
+  Chennai: ['Tambaram', 'Velachery', 'OMR', 'T Nagar', 'Porur', 'Anna Nagar'],
+  Bangalore: ['Whitefield', 'BTM Layout', 'Electronic City', 'Marathahalli', 'Indiranagar', 'Koramangala'],
+  Coimbatore: ['Gandhipuram', 'RS Puram', 'Peelamedu', 'Singanallur', 'Saibaba Colony'],
+  Hyderabad: ['Madhapur', 'Gachibowli', 'Kondapur', 'Hitech City', 'Begumpet'],
+};
 
+const cities = Object.keys(cityData);
 const tenants = ['Boys', 'Girls', 'Anyone'];
 
 async function main() {
-  // ✅ FIX TYPE
   const users: User[] = [];
   const properties: Property[] = [];
 
+  console.log('🚀 Seeding started...');
+
   // 🔥 1. USERS
   for (let i = 0; i < 20; i++) {
+    const city = faker.helpers.arrayElement(cities);
+
     const user = await prisma.user.create({
       data: {
         name: faker.person.fullName(),
-        mobile: faker.string.numeric(10), // ✅ FIXED
+        mobile: faker.string.numeric(10),
         email: faker.internet.email(),
         isProfileComplete: true,
-        city: 'Chennai',
-        locality: faker.helpers.arrayElement(chennaiAreas),
 
-        latitude: faker.location.latitude(), // ✅ FIXED
-        longitude: faker.location.longitude(), // ✅ FIXED
+        city,
+        locality: faker.helpers.arrayElement(cityData[city]),
+
+        latitude: faker.location.latitude(),
+        longitude: faker.location.longitude(),
       },
     });
 
     users.push(user);
   }
 
-  // 🔥 2. PROPERTIES
-  for (let i = 0; i < 100; i++) {
-    const owner = faker.helpers.arrayElement(users);
-    const rent = faker.number.int({ min: 5000, max: 15000 });
+  // 🔥 2. PROPERTIES (Balanced per city)
+  const perCity = 25; // 25 x 4 = 100
 
-    const property = await prisma.property.create({
-      data: {
-        userId: owner.id,
+  for (const city of cities) {
+    for (let i = 0; i < perCity; i++) {
+      const owner = faker.helpers.arrayElement(users);
+      const rent = faker.number.int({ min: 5000, max: 18000 });
 
-        city: 'Chennai',
-        locality: faker.helpers.arrayElement(chennaiAreas),
-        street: faker.location.streetAddress(),
-        landmark: faker.company.name(),
+      const property = await prisma.property.create({
+        data: {
+          userId: owner.id,
 
-        latitude: faker.location.latitude(), // ✅ FIXED
-        longitude: faker.location.longitude(), // ✅ FIXED
+          city,
+          locality: faker.helpers.arrayElement(cityData[city]),
+          street: faker.location.streetAddress(),
+          landmark: faker.company.name(),
 
-        propertyName: faker.company.name() + ' PG',
-        propertyType: 'PG/Hostel',
+          latitude: faker.location.latitude(),
+          longitude: faker.location.longitude(),
 
-        roomType: [
-          {
-            rent,
-            deposit: rent * 2,
-            sharing: faker.helpers.arrayElement([
-              'Single room',
-              'Double sharing',
-              '3 sharing',
-            ]),
-            amenities: ['AC', 'WiFi', 'Attached Bathroom'],
+          propertyName: `${faker.person.lastName()} Residency`,
+          propertyType: 'PG/Hostel',
+
+          roomType: [
+            {
+              rent,
+              deposit: rent * 2,
+              sharing: faker.helpers.arrayElement([
+                'Single room',
+                'Double sharing',
+                '3 sharing',
+              ]),
+              amenities: ['AC', 'WiFi', 'Attached Bathroom', 'Cupboard'],
+            },
+          ],
+
+          foodIncluded: faker.datatype.boolean(),
+
+          foodType: {
+            breakfast: true,
+            lunch: faker.datatype.boolean(),
+            dinner: true,
           },
-        ],
 
-        foodIncluded: true,
-        foodType: { breakfast: true, lunch: true, dinner: true },
+          pgAmenities: {
+            wifi: true,
+            laundry: true,
+            powerBackup: true,
+            lift: faker.datatype.boolean(),
+          },
 
-        pgAmenities: {
-          wifi: true,
-          laundry: true,
-          powerBackup: true,
+          parking: faker.helpers.arrayElement(['Car', 'Bike', 'Both', 'None']),
+
+          availableFrom: new Date(),
+          noticePeriod: faker.number.int({ min: 7, max: 30 }),
+          gateClosingTime: new Date(),
+
+          images: [
+            `https://picsum.photos/400/300?random=${city}-${i}`,
+          ],
+
+          contactName: faker.person.fullName(),
+          mobileNo: faker.string.numeric(10),
+
+          whatsapp: true,
+          whatsappupdates: true,
+
+          preferredTenant: [faker.helpers.arrayElement(tenants)],
+          preferredGuests: [
+            faker.helpers.arrayElement(['Students', 'Working Professionals']),
+          ],
+
+          restrictions: {
+            smoking: faker.datatype.boolean(),
+            drinking: faker.datatype.boolean(),
+          },
+
+          propertyDescription: faker.lorem.paragraph(),
+
+          currentStep: 6,
+          isDraft: false,
+          isDeleted: false,
         },
+      });
 
-        parking: faker.helpers.arrayElement(['Car', 'Bike', 'Both']),
-
-        availableFrom: new Date(),
-        noticePeriod: faker.number.int({ min: 7, max: 30 }),
-        gateClosingTime: new Date(),
-
-        images: [
-          `https://picsum.photos/400/300?random=${i}`,
-        ],
-
-        contactName: faker.person.fullName(),
-        mobileNo: faker.string.numeric(10), // ✅ FIXED
-
-        whatsapp: true,
-        whatsappupdates: true,
-
-        preferredTenant: [faker.helpers.arrayElement(tenants)],
-        preferredGuests: ['Students', 'Working Professionals'],
-
-        restrictions: {
-          smoking: faker.datatype.boolean(),
-          drinking: faker.datatype.boolean(),
-        },
-
-        propertyDescription: faker.lorem.paragraph(),
-
-        currentStep: 6,
-        isDraft: false,
-        isDeleted: false,
-      },
-    });
-
-    properties.push(property);
+      properties.push(property);
+    }
   }
 
   // 🔥 3. LIKES
@@ -149,5 +164,9 @@ async function main() {
 }
 
 main()
-  .catch(console.error)
-  .finally(() => prisma.$disconnect());
+  .catch((e) => {
+    console.error('❌ ERROR:', e);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });
