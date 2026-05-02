@@ -23,27 +23,21 @@ async save(dto: SavePreferenceDto) {
   const { userId, ...data } = dto;
 
   return this.prisma.$transaction(async (tx) => {
-
-    // 🔥 1. CREATE NEW ENTRY
+    // ✅ 1. CREATE NEW ENTRY
     const newPref = await tx.userPreference.create({
       data: {
         userId,
-
         city: data.city ?? null,
         locality: data.locality ?? null,
         search: data.search ?? null,
-
         pgFor: data.pgFor ?? null,
         sharingTypes: data.sharingTypes ?? null,
         preferredTenant: data.preferredTenant ?? null,
-
         availability: data.availability ?? null,
         parking: data.parking ?? null,
         foodIncluded: data.foodIncluded ?? null,
-
         rentMin: data.rentMin ?? null,
         rentMax: data.rentMax ?? null,
-
         amenities: data.amenities ?? null,
         nearby: data.nearby ?? null,
         restrictions: data.restrictions ?? null,
@@ -51,23 +45,23 @@ async save(dto: SavePreferenceDto) {
       },
     });
 
-    // 🔥 2. GET ALL USER PREFS (latest first)
-    const all = await tx.userPreference.findMany({
+    // ✅ 2. COUNT TOTAL
+    const count = await tx.userPreference.count({
       where: { userId },
-      orderBy: { createdAt: 'desc' },
     });
 
-    // 🔥 3. DELETE OLD IF > 10
-    if (all.length > 10) {
-      const toDelete = all.slice(10); // keep latest 10
-
-      await tx.userPreference.deleteMany({
-        where: {
-          id: {
-            in: toDelete.map(p => p.id),
-          },
-        },
+    // ✅ 3. DELETE ONLY OLDEST IF > 10
+    if (count > 10) {
+      const oldest = await tx.userPreference.findFirst({
+        where: { userId },
+        orderBy: { createdAt: 'asc' }, // 🔥 oldest first
       });
+
+      if (oldest) {
+        await tx.userPreference.delete({
+          where: { id: oldest.id },
+        });
+      }
     }
 
     return newPref;
