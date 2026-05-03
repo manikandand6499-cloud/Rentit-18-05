@@ -240,7 +240,9 @@ async getPropertyStats(propertyId: number) {
   });
 
   const enquiries = await this.prisma.message.count({
-    where: { propertyId },
+    where: {
+      propertyId: propertyId, // ✅ ONLY if exists in schema
+    },
   });
 
   return {
