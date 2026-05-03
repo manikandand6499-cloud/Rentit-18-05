@@ -250,11 +250,19 @@ async getPropertyStats(propertyId: number) {
 }
 
   async getMyProperties(userId: number) {
-    return this.prisma.property.findMany({
-      where: { userId },
-      orderBy: { createdAt: 'desc' },
-    });
-  }
+  return this.prisma.property.findMany({
+    where: { userId },
+    orderBy: { createdAt: 'desc' },
+    include: {
+      _count: {
+        select: {
+          propertyViews: true,
+          messages: true, // 👈 IMPORTANT
+        },
+      },
+    },
+  });
+}
 
   async getProperty(id: number) {
     if (!id || isNaN(id)) {
