@@ -83,70 +83,59 @@ async get(userId: number) {
 }
 
   // 🔥 RECOMMENDED PROPERTIES (CLEAN + SAFE)
-  async getRecommended(userId: number) {
-    const pref = await this.get(userId);
+ async getRecommended(userId: number, selectedCity?: string) {
+  const pref = await this.get(userId);
 
-    if (!pref) return [];
+  console.log('🔥 PREF:', pref);
+  console.log('🔥 SELECTED CITY:', selectedCity);
 
-    console.log('🔥 PREF:', pref);
+  return this.prisma.property.findMany({
+    where: {
+      isDeleted: false,
+      isDraft: false,
 
-    return this.prisma.property.findMany({
-      where: {
-        // ✅ CITY
-        ...(pref.city && { city: pref.city }),
+      // 🔥 PRIORITY 1: UI selected city
+      ...(selectedCity && { city: selectedCity }),
 
-        // ✅ PG FOR
-        ...(pref.pgFor && {
-          preferredTenant: {
-            array_contains: pref.pgFor,
-          },
+      // 🔥 PRIORITY 2: fallback to preference (only if no selectedCity)
+      ...(!selectedCity && pref?.city && { city: pref.city }),
+
+      // ✅ PG FOR
+      ...(pref?.pgFor && {
+        preferredTenant: {
+          array_contains: pref.pgFor,
+        },
+      }),
+
+      // ✅ Preferred Guests
+      ...(pref?.preferredTenant && {
+        preferredGuests: {
+          array_contains: pref.preferredTenant,
+        },
+      }),
+
+      // ✅ FOOD
+      ...(pref?.foodIncluded !== null &&
+        pref?.foodIncluded !== undefined && {
+          foodIncluded: pref.foodIncluded,
         }),
 
-        // ✅ Preferred Guests
-        ...(pref.preferredTenant && {
-          preferredGuests: {
-            array_contains: pref.preferredTenant,
-          },
-        }),
+      // ✅ PARKING
+      ...(pref?.parking === 'Yes' && {
+        parking: {
+          in: ['Car', 'Bike', 'Both'],
+        },
+      }),
 
-        // ✅ FOOD
-        ...(pref.foodIncluded !== null &&
-          pref.foodIncluded !== undefined && {
-            foodIncluded: pref.foodIncluded,
-          }),
+      ...(pref?.parking === 'No' && {
+        OR: [{ parking: null }, { parking: 'None' }],
+      }),
+    },
 
-        // ✅ PARKING
-        ...(pref.parking === 'Yes' && {
-          parking: {
-            in: ['Car', 'Bike', 'Both'],
-          },
-        }),
-
-        ...(pref.parking === 'No' && {
-          OR: [
-            { parking: null },
-            { parking: 'None' },
-          ],
-        }),
-
-        // ✅ RENT FILTER
-        ...(pref.rentMin || pref.rentMax
-          ? {
-              roomType: {
-                path: ['rent'],
-                gte: pref.rentMin ?? 0,
-                ...(pref.rentMax && pref.rentMax !== 0
-                  ? { lte: pref.rentMax }
-                  : {}),
-              },
-            }
-          : {}),
-      },
-
-   orderBy: this.getSort(pref.premiumSort ?? undefined),
-      take: 20,
-    });
-  }
+    orderBy: this.getSort(pref?.premiumSort ?? undefined),
+    take: 20,
+  });
+}
 
   // 🔥 SORT HANDLER
   private getSort(sort?: string) {

@@ -1,6 +1,7 @@
-import { Controller, Post, Body, Get, Param } from '@nestjs/common';
 import { UserPreferenceService } from './user-preference.service';
 import { SavePreferenceDto } from './dto/save-preference.dto';
+import { Controller, Post, Body, Get, Param, Query } from '@nestjs/common';
+
 
 @Controller('preferences')
 export class UserPreferenceController {
@@ -16,8 +17,11 @@ export class UserPreferenceController {
     return this.service.get(Number(userId));
   }
 
-  @Get('recommend/:userId')
-  recommended(@Param('userId') userId: string) {
-    return this.service.getRecommended(Number(userId));
-  }
+ @Get('recommend/:userId')
+recommended(
+  @Param('userId') userId: string,
+  @Query('city') city?: string, // 🔥 ADD THIS
+) {
+  return this.service.getRecommended(Number(userId), city);
+}
 }
