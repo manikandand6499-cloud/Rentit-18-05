@@ -63,6 +63,18 @@ export class PropertyController {
     return this.propertyService.updateDetails(Number(id), req.user.userId, dto);
   }
 
+
+  @Get('stats/:id')
+getStats(@Param('id') id: string) {
+  const numId = Number(id);
+
+  if (!numId || isNaN(numId)) {
+    throw new BadRequestException("Invalid property ID");
+  }
+
+  return this.propertyService.getPropertyStats(numId);
+}
+
   /*
   ==============================
   AMENITIES

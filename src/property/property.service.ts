@@ -234,6 +234,21 @@ export class PropertyService {
   });
 }
 
+async getPropertyStats(propertyId: number) {
+  const views = await this.prisma.propertyView.count({
+    where: { propertyId },
+  });
+
+  const enquiries = await this.prisma.message.count({
+    where: { propertyId },
+  });
+
+  return {
+    views,
+    enquiries,
+  };
+}
+
   async getMyProperties(userId: number) {
     return this.prisma.property.findMany({
       where: { userId },
