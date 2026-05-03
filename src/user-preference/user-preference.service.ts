@@ -83,16 +83,24 @@ async get(userId: number) {
 }
 
   // 🔥 RECOMMENDED PROPERTIES (CLEAN + SAFE)
- async getRecommended(userId: number) {
-  const pref = await this.get(userId);
+async getRecommended(userId: number, city?: string) {
+    const pref = await this.get(userId);
 
-  // 🔥 STEP 1: BASE QUERY (LIGHT FILTER ONLY)
+  // 🔥 PRIORITY: selectedCity from frontend
+  const finalCity = city || pref?.city;
+
   const baseList = await this.prisma.property.findMany({
     where: {
       isDeleted: false,
       isDraft: false,
 
-      ...(pref?.city && { city: pref.city }),
+      // ✅ STRICT CITY FILTER
+      ...(finalCity && {
+        city: {
+          equals: finalCity,
+          mode: 'insensitive', // 🔥 important (Chennai == chennai)
+        },
+      }),
 
       ...(pref?.pgFor && {
         preferredTenant: {
@@ -100,32 +108,18 @@ async get(userId: number) {
         },
       }),
     },
-    take: 50, // 🔥 fetch more for scoring
+    take: 50,
   });
 
-  // 🔥 STEP 2: FALLBACK IF EMPTY
-  if (!baseList.length) {
-    return this.prisma.property.findMany({
-      where: {
-        isDeleted: false,
-        isDraft: false,
-      },
-      orderBy: { createdAt: 'desc' },
-      take: 20,
-    });
-  }
+  // 🔥 IF NO DATA → RETURN EMPTY (YOU WANT STRICT)
+  if (!baseList.length) return [];
 
-  // 🔥 STEP 3: SCORING SYSTEM
+  // 🔥 SCORING
   const scored = baseList.map((p) => {
     let score = 0;
 
-    // ✅ CITY MATCH
-    if (pref?.city && p.city === pref.city) score += 5;
+    if (finalCity && p.city === finalCity) score += 5;
 
-    // ✅ LOCALITY MATCH
-    if (pref?.locality && p.locality === pref.locality) score += 4;
-
-    // ✅ PG FOR
     if (
       pref?.pgFor &&
       Array.isArray(p.preferredTenant) &&
@@ -134,20 +128,8 @@ async get(userId: number) {
       score += 3;
     }
 
-    // ✅ FOOD
-    if (
-      pref?.foodIncluded !== null &&
-      pref?.foodIncluded === p.foodIncluded
-    ) {
-      score += 2;
-    }
-
-    // ✅ PARKING
-    if (pref?.parking === 'Yes' && p.parking) score += 1;
-
-    // 🔥 RENT (FIXED HERE)
+    // 🔥 RENT SAFE
     let rent = 0;
-
     if (Array.isArray(p.roomType)) {
       const room = p.roomType[0] as any;
       rent = room?.rent ?? 0;
@@ -159,23 +141,13 @@ async get(userId: number) {
       rent >= pref.rentMin &&
       rent <= pref.rentMax
     ) {
-      score += 3;
+      score += 2;
     }
-
-    // 🔥 RECENCY BOOST
-    const daysOld =
-      (Date.now() - new Date(p.createdAt).getTime()) /
-      (1000 * 60 * 60 * 24);
-
-    if (daysOld < 7) score += 2;
 
     return { ...p, score };
   });
 
-  // 🔥 STEP 4: SORT + LIMIT
-  return scored
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 20);
+  return scored.sort((a, b) => b.score - a.score).slice(0, 20);
 }
 
   // 🔥 SORT HANDLER
