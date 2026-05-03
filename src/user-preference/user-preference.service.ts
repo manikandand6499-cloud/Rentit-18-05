@@ -83,70 +83,100 @@ async get(userId: number) {
 }
 
   // 🔥 RECOMMENDED PROPERTIES (CLEAN + SAFE)
-  async getRecommended(userId: number) {
-    const pref = await this.get(userId);
+ async getRecommended(userId: number) {
+  const pref = await this.get(userId);
 
-    if (!pref) return [];
+  // 🔥 STEP 1: BASE QUERY (LIGHT FILTER ONLY)
+  const baseList = await this.prisma.property.findMany({
+    where: {
+      isDeleted: false,
+      isDraft: false,
 
-    console.log('🔥 PREF:', pref);
+      ...(pref?.city && { city: pref.city }),
 
+      ...(pref?.pgFor && {
+        preferredTenant: {
+          array_contains: pref.pgFor,
+        },
+      }),
+    },
+    take: 50, // 🔥 fetch more for scoring
+  });
+
+  // 🔥 STEP 2: FALLBACK IF EMPTY
+  if (!baseList.length) {
     return this.prisma.property.findMany({
       where: {
-        // ✅ CITY
-        ...(pref.city && { city: pref.city }),
-
-        // ✅ PG FOR
-        ...(pref.pgFor && {
-          preferredTenant: {
-            array_contains: pref.pgFor,
-          },
-        }),
-
-        // ✅ Preferred Guests
-        ...(pref.preferredTenant && {
-          preferredGuests: {
-            array_contains: pref.preferredTenant,
-          },
-        }),
-
-        // ✅ FOOD
-        ...(pref.foodIncluded !== null &&
-          pref.foodIncluded !== undefined && {
-            foodIncluded: pref.foodIncluded,
-          }),
-
-        // ✅ PARKING
-        ...(pref.parking === 'Yes' && {
-          parking: {
-            in: ['Car', 'Bike', 'Both'],
-          },
-        }),
-
-        ...(pref.parking === 'No' && {
-          OR: [
-            { parking: null },
-            { parking: 'None' },
-          ],
-        }),
-
-        // ✅ RENT FILTER
-        ...(pref.rentMin || pref.rentMax
-          ? {
-              roomType: {
-                path: ['rent'],
-                gte: pref.rentMin ?? 0,
-                ...(pref.rentMax && pref.rentMax !== 0
-                  ? { lte: pref.rentMax }
-                  : {}),
-              },
-            }
-          : {}),
+        isDeleted: false,
+        isDraft: false,
       },
-
-   orderBy: this.getSort(pref.premiumSort ?? undefined),
+      orderBy: { createdAt: 'desc' },
       take: 20,
     });
   }
+
+  // 🔥 STEP 3: SCORING SYSTEM
+  const scored = baseList.map((p) => {
+    let score = 0;
+
+    // ✅ CITY MATCH
+    if (pref?.city && p.city === pref.city) score += 5;
+
+    // ✅ LOCALITY MATCH
+    if (pref?.locality && p.locality === pref.locality) score += 4;
+
+    // ✅ PG FOR
+    if (
+      pref?.pgFor &&
+      Array.isArray(p.preferredTenant) &&
+      p.preferredTenant.includes(pref.pgFor)
+    ) {
+      score += 3;
+    }
+
+    // ✅ FOOD
+    if (
+      pref?.foodIncluded !== null &&
+      pref?.foodIncluded === p.foodIncluded
+    ) {
+      score += 2;
+    }
+
+    // ✅ PARKING
+    if (pref?.parking === 'Yes' && p.parking) score += 1;
+
+    // 🔥 RENT (FIXED HERE)
+    let rent = 0;
+
+    if (Array.isArray(p.roomType)) {
+      const room = p.roomType[0] as any;
+      rent = room?.rent ?? 0;
+    }
+
+    if (
+      pref?.rentMin &&
+      pref?.rentMax &&
+      rent >= pref.rentMin &&
+      rent <= pref.rentMax
+    ) {
+      score += 3;
+    }
+
+    // 🔥 RECENCY BOOST
+    const daysOld =
+      (Date.now() - new Date(p.createdAt).getTime()) /
+      (1000 * 60 * 60 * 24);
+
+    if (daysOld < 7) score += 2;
+
+    return { ...p, score };
+  });
+
+  // 🔥 STEP 4: SORT + LIMIT
+  return scored
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 20);
+}
 
   // 🔥 SORT HANDLER
   private getSort(sort?: string) {
