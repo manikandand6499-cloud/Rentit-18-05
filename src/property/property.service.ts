@@ -209,20 +209,27 @@ export class PropertyService {
   GET METHODS
   ============================
   */
-  async getAllProperties(userId: number) {
-    return this.prisma.property.findMany({
-      where: {
-        isDeleted: false,
-        userId: { not: userId },
-      },
-      orderBy: { createdAt: 'desc' },
-      include: {
-        _count: {
-          select: { propertyViews: true },
+ async getAllProperties(userId: number, city?: string) {
+  return this.prisma.property.findMany({
+    where: {
+      isDeleted: false,
+      userId: { not: userId },
+      // ✅ ADD CITY FILTER
+      ...(city && {
+        city: {
+          equals: city,
+          mode: 'insensitive',
         },
+      }),
+    },
+    orderBy: { createdAt: 'desc' },
+    include: {
+      _count: {
+        select: { propertyViews: true },
       },
-    });
-  }
+    },
+  });
+}
 
   async getMyTotalViews(userId: number) {
   return this.prisma.propertyView.count({
@@ -233,6 +240,8 @@ export class PropertyService {
     },
   });
 }
+
+
 
 async getPropertyStats(propertyId: number) {
   const views = await this.prisma.propertyView.count({

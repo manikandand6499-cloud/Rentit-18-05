@@ -43,6 +43,8 @@ export class PropertyController {
     return this.propertyService.createBasic(req.user.userId, dto);
   }
 
+ 
+
   /*
   ==============================
   LOCATION
@@ -165,10 +167,12 @@ getRecommended(
   GET ALL
   ==============================
   */
+
+
   @Get('all')
-  getAllProperties(@Req() req) {
-    return this.propertyService.getAllProperties(req.user.userId);
-  }
+getAllProperties(@Req() req, @Query('city') city?: string) {
+  return this.propertyService.getAllProperties(req.user.userId, city);
+}
 
   /*
   ==============================
