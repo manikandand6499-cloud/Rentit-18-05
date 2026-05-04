@@ -75,6 +75,18 @@ getStats(@Param('id') id: string) {
   return this.propertyService.getPropertyStats(numId);
 }
 
+
+@Get('recommend/:userId')
+getRecommended(
+  @Param('userId') userId: string,
+  @Query('city') city?: string,
+) {
+  return this.propertyService.getRecommended(
+    Number(userId),
+    city,
+  );
+}
+
   /*
   ==============================
   AMENITIES

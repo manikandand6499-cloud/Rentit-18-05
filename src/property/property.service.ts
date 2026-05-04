@@ -294,6 +294,35 @@ async getPropertyStats(propertyId: number) {
     });
   }
 
+
+  async getRecommended(userId: number, city?: string) {
+  return this.prisma.property.findMany({
+    where: {
+      isDeleted: false,
+
+      // 🔥 FILTER BY CITY
+      ...(city && {
+        city: {
+          equals: city,
+          mode: 'insensitive',
+        },
+      }),
+
+      // optional filters (can improve later)
+      propertyType: {
+        contains: 'pg',
+        mode: 'insensitive',
+      },
+    },
+
+    orderBy: {
+      createdAt: 'desc',
+    },
+
+    take: 10,
+  });
+}
+
   /*
   ============================
   VIEW SYSTEM
