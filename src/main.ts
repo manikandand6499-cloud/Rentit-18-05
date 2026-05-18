@@ -1,30 +1,21 @@
-// src/main.ts
-
 import 'reflect-metadata';
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
-import * as dotenv from 'dotenv';
 import * as path from 'path';
-
 import { AppModule } from './app.module';
-
-// Load .env file from project root
-dotenv.config({
-  path: path.resolve(__dirname, '../.env'),
-});
 
 async function bootstrap() {
   const app =
-      await NestFactory.create<NestExpressApplication>(AppModule);
+    await NestFactory.create<NestExpressApplication>(AppModule);
 
-  // Enable CORS
+  // CORS
   app.enableCors({
     origin: true,
     credentials: true,
   });
 
-  // Global Validation Pipe
+  // Validation
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -33,7 +24,7 @@ async function bootstrap() {
     }),
   );
 
-  // Static uploads folder
+  // Static Uploads
   app.useStaticAssets(
     path.join(__dirname, '..', 'uploads'),
     {
@@ -41,13 +32,13 @@ async function bootstrap() {
     },
   );
 
-  const port = Number(process.env.PORT) || 5000;
+  // Render Dynamic PORT
+  const port = process.env.PORT || 10000;
 
-  // Listen on all network interfaces
+  // Start Server
   await app.listen(port, '0.0.0.0');
 
-  console.log(`🚀 Server running on the http://localhost:${port}`);
-  console.log(`🌐 Network URL: http://0.0.0.0:${port}`);
+  console.log(`🚀 Server running on port ${port}`);
 }
 
 bootstrap();
