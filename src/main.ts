@@ -4,7 +4,7 @@ import { AppModule } from './app.module';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
 import { NestExpressApplication } from '@nestjs/platform-express';
-
+import 'reflect-metadata';
 dotenv.config({
   path: path.resolve(__dirname, "../.env"),
 });
@@ -12,30 +12,29 @@ dotenv.config({
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
-  /// ✅ CORS (better config)
   app.enableCors({
-    origin: true, // 🔥 allow all dynamically
+    origin: true,
     credentials: true,
   });
 
-  /// ✅ VALIDATION (important)
   app.useGlobalPipes(
     new ValidationPipe({
-      whitelist: true,        // removes unwanted fields
-      transform: true,        // auto type convert (string → number)
-      forbidNonWhitelisted: true, // 🔥 security
+      whitelist: true,
+      transform: true,
+      forbidNonWhitelisted: true,
     }),
   );
 
-  /// ✅ STATIC FILES
   app.useStaticAssets(path.join(__dirname, '..', 'uploads'), {
     prefix: '/uploads/',
   });
 
   const port = process.env.PORT || 5000;
-  await app.listen(port);
 
-  console.log(`🚀 Server running on http://localhost:${port}`);
+  // 🔥 IMPORTANT CHANGE HERE
+  await app.listen(port, '0.0.0.0');
+
+  console.log(`🚀 Server running on http://0.0.0.0:${port}`);
 }
 
 bootstrap();

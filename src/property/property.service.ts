@@ -2,6 +2,7 @@
 // // property.service.ts
 
 import {
+  ForbiddenException,
   Injectable,
   NotFoundException,
   UnauthorizedException,
@@ -23,18 +24,29 @@ export class PropertyService {
   STEP 1 — BASIC
   ============================
   */
-  async createBasic(userId: number, data: CreateBasicDto) {
-    return this.prisma.property.create({
-      data: {
-        userId,
-        city: data.city ?? 'Chennai',
-        locality: data.locality ?? 'Unknown',
-        propertyType: data.propertyType || 'PG',
-        propertyName: data.propertyName ?? undefined,
-        currentStep: 1,
-      },
-    });
-  }
+async createBasic(userId: number, data: CreateBasicDto) {
+
+if (data.propertyType === "Apartment") {
+  return this.prisma.apartment.create({
+    data: {
+      userId,
+      city: data.city ?? "Chennai",
+      locality: data.locality ?? "Unknown", // ✅ FIX
+      propertyType2: "Apartment",
+    },
+  });
+}
+
+  return this.prisma.pGDetails.create({
+    data: {
+      userId,
+      city: data.city ?? "Chennai",
+      locality: data.locality ?? "Unknown",
+      propertyType: "PG",
+      currentStep: 1,
+    },
+  });
+}
 
   /*
   ============================
@@ -46,60 +58,72 @@ export class PropertyService {
 
   console.log("BODY:", data);
 
-  return this.prisma.property.update({
-    where: { id },
-    data: {
-      city: data.city ?? undefined,
-      street: data.street ?? undefined,
-      locality: data.locality ?? undefined,
+ return this.prisma.pGDetails.update({
+  where: { id },
+  data: {
+    ...(data.city && { city: data.city }),
+    ...(data.street && { street: data.street }),
+    ...(data.locality && { locality: data.locality }),
 
-      // ✅ CLEAN STRING FIX
-      landmark:
-        data.landmark && data.landmark.trim() !== ""
-          ? data.landmark.trim()
-          : undefined,
+    ...(data.landmark && data.landmark.trim() !== "" && {
+      landmark: data.landmark.trim(),
+    }),
 
-      latitude: data.latitude ?? undefined,
-      longitude: data.longitude ?? undefined,
+    ...(data.latitude !== undefined && { latitude: data.latitude }),
+    ...(data.longitude !== undefined && { longitude: data.longitude }),
 
-      propertyName: data.propertyName ?? undefined,
+    ...(data.propertyName && { propertyName: data.propertyName }),
 
-      preferredGuests: data.preferredGuests ?? undefined,
-      preferredTenant: data.preferredTenant ?? undefined,
+    ...(data.preferredGuests && {
+      preferredGuests: data.preferredGuests as any,
+    }),
 
-      // 🔥 FIXED JSON FIELDS
-      roomType:
-        Array.isArray(data.roomType) && data.roomType.length > 0
-          ? (data.roomType as any)
-          : undefined,
+    ...(data.preferredTenant && {
+      preferredTenant: data.preferredTenant as any,
+    }),
 
-      foodType: data.foodType ? (data.foodType as any) : undefined,
+    // ✅ JSON SAFE
+    ...(Array.isArray(data.roomType) &&
+      data.roomType.length > 0 && {
+        roomType: data.roomType as any,
+      }),
 
-      pgAmenities: data.pgAmenities
-        ? (data.pgAmenities as any)
-        : undefined,
+    ...(data.foodType && { foodType: data.foodType as any }),
 
-      restrictions: data.restrictions
-        ? (data.restrictions as any)
-        : undefined,
+    ...(data.pgAmenities && {
+      pgAmenities: data.pgAmenities as any,
+    }),
 
-      availableFrom: data.availableFrom
-        ? new Date(data.availableFrom)
-        : undefined,
+    ...(data.restrictions && {
+      restrictions: data.restrictions as any,
+    }),
 
-      foodIncluded: data.foodIncluded ?? undefined,
-      parking: data.parking ?? undefined,
-      noticePeriod: data.noticePeriod ?? undefined,
+    ...(data.availableFrom && {
+      availableFrom: new Date(data.availableFrom),
+    }),
 
-      gateClosingTime: data.gateClosingTime
-        ? new Date(`1970-01-01T${data.gateClosingTime}:00`)
-        : undefined,
+    ...(data.foodIncluded !== undefined && {
+      foodIncluded: data.foodIncluded,
+    }),
 
-      currentStep: 2,
-    },
-  });
+    ...(data.parking && { parking: data.parking }),
+
+    ...(data.noticePeriod !== undefined && {
+      noticePeriod: data.noticePeriod,
+    }),
+
+    ...(data.gateClosingTime && {
+      gateClosingTime: new Date(
+        `1970-01-01T${data.gateClosingTime}:00`
+      ),
+    }),
+
+    currentStep: 2,
+  },
+  
+});
+
 }
-
   /*
   ============================
   STEP 3 — AMENITIES
@@ -108,7 +132,7 @@ export class PropertyService {
   async updateAmenities(id: number, userId: number, data: CreateAmenitiesDto) {
     await this.checkPropertyOwner(id, userId);
 
-    return this.prisma.property.update({
+    return this.prisma.pGDetails.update({
       where: { id },
       data: {
         foodIncluded: data.foodIncluded ?? undefined,
@@ -130,7 +154,7 @@ export class PropertyService {
   async updateLocation(id: number, userId: number, data: UpdateLocationDto) {
     await this.checkPropertyOwner(id, userId);
 
-    return this.prisma.property.update({
+    return this.prisma.pGDetails.update({
       where: { id },
       data: {
         latitude: data.latitude,
@@ -145,10 +169,12 @@ export class PropertyService {
   STEP 5 — MEDIA
   ============================
   */
+ 
+  
   async saveImages(id: number, userId: number, images: string[]) {
     await this.checkPropertyOwner(id, userId);
 
-    return this.prisma.property.update({
+    return this.prisma.pGDetails.update({
       where: { id },
       data: {
         images,
@@ -160,7 +186,7 @@ export class PropertyService {
   async saveVideo(id: number, userId: number, video: string) {
     await this.checkPropertyOwner(id, userId);
 
-    return this.prisma.property.update({
+    return this.prisma.pGDetails.update({
       where: { id },
       data: { video },
     });
@@ -174,7 +200,7 @@ export class PropertyService {
   async updateContact(id: number, userId: number, data: CreateContactDto) {
     await this.checkPropertyOwner(id, userId);
 
-    return this.prisma.property.update({
+    return this.prisma.pGDetails.update({
       where: { id },
       data: {
         contactName: data.contactName ?? undefined,
@@ -195,7 +221,7 @@ export class PropertyService {
   async verifyProperty(id: number, userId: number) {
     await this.checkPropertyOwner(id, userId);
 
-    return this.prisma.property.update({
+    return this.prisma.pGDetails.update({
       where: { id },
       data: {
         currentStep: 9,
@@ -210,7 +236,7 @@ export class PropertyService {
   ============================
   */
  async getAllProperties(userId: number, city?: string) {
-  return this.prisma.property.findMany({
+  return this.prisma.pGDetails.findMany({
     where: {
       isDeleted: false,
       userId: { not: userId },
@@ -261,7 +287,7 @@ async getPropertyStats(propertyId: number) {
 }
 
   async getMyProperties(userId: number) {
-  return this.prisma.property.findMany({
+  return this.prisma.pGDetails.findMany({
     where: { userId },
     orderBy: { createdAt: 'desc' },
     include: {
@@ -280,7 +306,7 @@ async getPropertyStats(propertyId: number) {
       throw new NotFoundException('Invalid property ID');
     }
 
-    const property = await this.prisma.property.findUnique({
+    const property = await this.prisma.pGDetails.findUnique({
       where: { id },
     });
 
@@ -297,7 +323,7 @@ async getPropertyStats(propertyId: number) {
   async deleteProperty(id: number, userId: number) {
     await this.checkPropertyOwner(id, userId);
 
-    return this.prisma.property.update({
+    return this.prisma.pGDetails.update({
       where: { id },
       data: { isDeleted: true },
     });
@@ -305,7 +331,7 @@ async getPropertyStats(propertyId: number) {
 
 
   async getRecommended(userId: number, city?: string) {
-  return this.prisma.property.findMany({
+  return this.prisma.pGDetails.findMany({
     where: {
       isDeleted: false,
 
@@ -372,20 +398,23 @@ async getPropertyStats(propertyId: number) {
     });
   }
 
-  /*
-  ============================
-  OWNER CHECK
-  ============================
-  */
-  private async checkPropertyOwner(id: number, userId: number) {
-    const property = await this.prisma.property.findUnique({
-      where: { id },
-    });
 
-    if (!property) throw new NotFoundException('Property not found');
+private async checkPropertyOwner(
+  id: number,
+  userId: number,
+) {
+  const property = await this.prisma.pGDetails.findUnique({
+    where: { id },
+  });
 
-    if (property.userId !== userId) {
-      throw new UnauthorizedException('Not allowed');
-    }
+  if (!property) {
+    throw new NotFoundException('Property not found');
   }
+
+  if (property.userId !== userId) {
+    throw new ForbiddenException('Unauthorized');
+  }
+
+  return property;
+}
 }

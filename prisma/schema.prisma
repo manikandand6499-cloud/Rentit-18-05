@@ -8,29 +8,28 @@ datasource db {
 }
 
 model User {
-  id                Int      @id @default(autoincrement())
-  mobile            String   @unique
-  createdAt         DateTime @default(now())
+  id                Int              @id @default(autoincrement())
+  mobile            String           @unique
+  createdAt         DateTime         @default(now())
   email             String?
-  isProfileComplete Boolean  @default(false)
+  isProfileComplete Boolean          @default(false)
   name              String?
-
-  // ✅ ADD THIS
-  latitude   Float?
-  longitude  Float?
-  city       String?
-  area       String?
-  locality   String?
-
-  likes         Like[]
-  properties    Property[]
-  subscriptions Subscription[]
-  visits        Visit[]
-  propertyViews PropertyView[]
-  UserPreference UserPreference[]
-
-  sentMessages     Message[] @relation("Sender")
-  receivedMessages Message[] @relation("Receiver")
+  area              String?
+  city              String?
+  latitude          Float?
+  locality          String?
+  longitude         Float?
+  Apartment         Apartment[]
+  Commercial        Commercial[]
+  Flatmate          Flatmate[]
+  likes             Like[]
+  receivedMessages  Message[]        @relation("Receiver")
+  sentMessages      Message[]        @relation("Sender")
+  properties        PGDetails[]
+  propertyViews     PropertyView[]
+  subscriptions     Subscription[]
+  UserPreference    UserPreference[]
+  visits            Visit[]
 }
 
 model Subscription {
@@ -45,8 +44,7 @@ model Subscription {
   expiryDate   DateTime
   isActive     Boolean  @default(true)
   createdAt    DateTime @default(now())
-
-  user User @relation(fields: [userId], references: [id])
+  user         User     @relation(fields: [userId], references: [id])
 }
 
 model Otp {
@@ -58,92 +56,293 @@ model Otp {
 }
 
 model UserPreference {
-  id        Int      @id @default(autoincrement())
-
-  userId    Int
-
-  // 🔥 BASIC FILTERS
+  id              Int      @id @default(autoincrement())
+  userId          Int
   city            String?
   locality        String?
   search          String?
-
-  // 🔥 USER TYPE
   pgFor           String?
   sharingTypes    Json?
   preferredTenant String?
-
-  // 🔥 FEATURES
   availability    String?
   parking         String?
   foodIncluded    Boolean?
-
-  // 🔥 PRICING (⚠️ use Int for consistency with rent)
   rentMin         Int?
   rentMax         Int?
-
-  // 🔥 EXTRA FILTERS
   amenities       Json?
   nearby          Json?
   restrictions    Json?
   premiumSort     String?
-
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  // 🔥 RELATION
-  user            User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  // 🔥 INDEX (FAST QUERY)
   @@index([userId])
-
-  // 🔥 OPTIONAL: prevent duplicate same-time entries
   @@index([userId, createdAt])
 }
 
 model Like {
-  id         Int      @id @default(autoincrement())
+  id         Int        @id @default(autoincrement())
   userId     Int
-  propertyId Int
-  createdAt  DateTime @default(now())
-
-  property Property @relation(fields: [propertyId], references: [id])
-  user     User     @relation(fields: [userId], references: [id])
+  propertyId Int?
+  createdAt  DateTime   @default(now())
+  flatmateId Int?
+  flatmate   Flatmate?  @relation(fields: [flatmateId], references: [id])
+  property   PGDetails? @relation(fields: [propertyId], references: [id])
+  user       User       @relation(fields: [userId], references: [id])
 
   @@unique([userId, propertyId])
+  @@unique([userId, flatmateId])
 }
 
 model Visit {
-  id       Int         @id @default(autoincrement())
-
-  // 🔁 TEMP: keep old fields during migration
-  date String?
-  time String?
-
-  // ✅ NEW FIELD (optional for now)
+  id            Int         @id @default(autoincrement())
+  date          String?
+  time          String?
+  language      String      @default("en")
+  userId        Int
+  propertyId    Int
+  createdAt     DateTime    @default(now())
+  isCalled      Boolean     @default(false)
   visitDateTime DateTime?
-
-  status VisitStatus @default(pending)
-
-  language String      @default("en")
-  isCalled Boolean     @default(false)
-
-  userId     Int
-  propertyId Int
-
-  user     User     @relation(fields: [userId], references: [id])
-  property Property @relation(fields: [propertyId], references: [id])
-
-  createdAt DateTime @default(now())
+  status        VisitStatus @default(pending)
+  property      PGDetails   @relation(fields: [propertyId], references: [id])
+  user          User        @relation(fields: [userId], references: [id])
 
   @@index([userId])
   @@index([propertyId])
   @@index([status])
+}
 
-  // ⚠️ keep old unique during migration (if you had it)
-  // @@unique([propertyId, date, time])
+model PGDetails {
+  id                  Int            @id @default(autoincrement())
+  userId              Int
+  city                String
+  locality            String
+  street              String?
+  landmark            String?
+  latitude            Float?
+  longitude           Float?
+  propertyName        String?
+  propertyType        String
+  roomType            Json?
+  foodIncluded        Boolean?
+  foodType            Json?
+  pgAmenities         Json?
+  parking             String?
+  availableFrom       DateTime?
+  noticePeriod        Int?
+  gateClosingTime     DateTime?
+  images              String[]       @default([])
+  video               String?
+  contactName         String?
+  mobileNo            String?
+  whatsapp            Boolean?
+  whatsappupdates     Boolean?
+  preferredTenant     Json?
+  preferredGuests     Json?
+  restrictions        Json?
+  propertyDescription String?
+  currentStep         Int            @default(1)
+  isDraft             Boolean        @default(true)
+  isDeleted           Boolean        @default(false)
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+  likes               Like[]
+  messages            Message[]      @relation("PropertyMessages")
+  user                User           @relation(fields: [userId], references: [id])
+  propertyViews       PropertyView[]
+  visits              Visit[]
 
-  // ❗ Add this AFTER migration completes
-  // @@unique([propertyId, visitDateTime])
+  @@map("Property")
+}
+
+model Commercial {
+  id                      Int      @id @default(autoincrement())
+  userId                  Int
+  city                    String
+  locality                String?
+  street                  String?
+  landmark                String?
+  latitude                Float?
+  longitude               Float?
+  propertyType            String?
+  buildingType            String?
+  propertyAge             String?
+  floor                   Int?
+  totalFloor              Int?
+  builtUpArea             Int?
+  furnishing              Json?
+  otherFeatures           Json?
+  rentType                String?
+  expectedRent            Int?
+  deposit                 Int?
+  maintenanceAmount       Int?
+  maintenance             String?
+  rentNegotiable          Boolean?
+  depositNegotiable       Boolean?
+  maintenanceExtra        Boolean?
+  leaseDuration           String?
+  lockinPeriod            String?
+  availableFrom           String?
+  idealFor                Json?
+  addOthertags            String?
+  contactName             String?
+  mobileNo                String?
+  whatsapp                Boolean?
+  images                  String[]
+  video                   String?
+  description             String?
+  availabilityDay         Json?
+  startTime               String?
+  endTime                 String?
+  availableAllDay         Boolean?
+  currentStep             Int      @default(1)
+  isDraft                 Boolean  @default(true)
+  createdAt               DateTime @default(now())
+  commercialPropertyType  String?
+  commercialOtherFeatures Json?
+  slots                   String?
+  user                    User     @relation(fields: [userId], references: [id])
+}
+
+model PropertyView {
+  id         Int       @id @default(autoincrement())
+  userId     Int
+  propertyId Int
+  createdAt  DateTime  @default(now())
+  property   PGDetails @relation(fields: [propertyId], references: [id])
+  user       User      @relation(fields: [userId], references: [id])
+
+  @@unique([userId, propertyId])
+}
+
+model Message {
+  id         Int       @id @default(autoincrement())
+  senderId   Int
+  receiverId Int
+  propertyId Int
+  message    String
+  createdAt  DateTime  @default(now())
+  property   PGDetails @relation("PropertyMessages", fields: [propertyId], references: [id])
+  receiver   User      @relation("Receiver", fields: [receiverId], references: [id])
+  sender     User      @relation("Sender", fields: [senderId], references: [id])
+
+  @@index([propertyId])
+  @@index([senderId])
+  @@index([receiverId])
+}
+
+model Flatmate {
+  id                   Int       @id @default(autoincrement())
+  userId               Int
+  city                 String
+  propertyType         String
+  apartmentType        String?
+  apartmentName        String?
+  bhkType              String?
+  floor                String?
+  totalFloor           String?
+  roomType             String?
+  tenantType           String?
+  propertyAge          String?
+  facing               String?
+  builtUpArea          Float?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  landmark             String?
+  latitude             Float?
+  locality             String?
+  longitude            Float?
+  street               String?
+  availableFrom        DateTime?
+  description          String?
+  expectedDeposit      Float?
+  expectedRent         Float?
+  furnishing           String?
+  maintenanceAmount    Float?
+  maintenanceType      String?
+  parking              String?
+  acRoom               Boolean?
+  attachedBathroom     Boolean?
+  balcony              Boolean?
+  bathroomType         String?
+  clubHouseSelected    Boolean?  @default(false)
+  directionsTip        String?
+  drinkingAllowed      Boolean?
+  gatedSecurity        Boolean?
+  gym                  Boolean?
+  liftSelected         Boolean?  @default(false)
+  nonVegAllowed        Boolean?
+  parkSelected         Boolean?  @default(false)
+  powerBackupSelected  Boolean?  @default(false)
+  secondaryNumber      String?
+  smokingAllowed       Boolean?
+  swimmingPoolSelected Boolean?  @default(false)
+  waterSupply          String?
+  whoShowsProperty     String?
+  availabilityDay      Json?
+  availableAllDay      Boolean?
+  endTime              String?
+  images               String[]  @default([])
+  startTime            String?
+  video                String?
+  user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  Like                 Like[]
+}
+
+model Apartment {
+  id                       Int      @id @default(autoincrement())
+  userId                   Int
+  city                     String
+  locality                 String
+  street                   String?
+  landmark                 String?
+  latitude                 Float?
+  longitude                Float?
+  buildingType             String?
+  bhkType                  String?
+  floor                    Int?
+  totalFloor               Int?
+  builtUpArea              Int?
+  propertyAge              String?
+  facing                   String?
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+  propertyType2            String?
+  otherFeatures            Json?
+  furnishing               String?
+  rentType                 String?
+  apartmentType            String?
+  availableFrom            String?
+  description              String?
+  maintenance              String?
+  parking                  String?
+  rentNegotiable           Boolean?
+  expectedRent             Int?
+  deposit                  Int?
+  maintenanceAmount        Int?
+  preferredTenant          String[]
+  amenities                String[]
+  bathroom                 Int?
+  directions               String?
+  gateSecurity             Boolean?
+  gymAllowed               Boolean?
+  noOfBalcony              Int?
+  nonVegAllowed            Boolean?
+  petAllowed               Boolean?
+  propertyCondition        Json?
+  secondaryNumber          String?
+  shownBy                  String?
+  unitsPropertiesAvailable Boolean?
+  waterSupply              Json?
+  availabilityDay          Json?
+  images                   String[] @default([])
+  video                    String?
+  availableAllDay          Boolean?
+  endTime                  String?
+  startTime                String?
+  user                     User     @relation(fields: [userId], references: [id])
 }
 
 enum VisitStatus {
@@ -152,98 +351,4 @@ enum VisitStatus {
   calling
   cancelled
   completed
-}
-
-model Property {
-  id     Int @id @default(autoincrement())
-  userId Int
-
-  // 📍 BASIC INFO
-  city      String
-  locality  String
-  street    String?
-  landmark  String?
-  latitude  Float?
-  longitude Float?
-
-  // 🏠 PROPERTY INFO
-  propertyName String?
-  propertyType String
-
-  // 🛏 ROOM DETAILS
-  roomType Json?
-
-  // 🍽 FACILITIES
-  foodIncluded Boolean?
-  foodType     Json?
-
-  pgAmenities  Json?
-
-  parking String?
-
-  // ⏰ AVAILABILITY
-  availableFrom   DateTime?
-  noticePeriod    Int?
-  gateClosingTime DateTime?
-
-  // 📸 MEDIA
-  images String[] @default([])
-  video  String?
-
-  // 📞 CONTACT
-  contactName     String?
-  mobileNo        String?
-  whatsapp        Boolean?
-  whatsappupdates Boolean?
-
-  // 👥 PREFERENCES
-  preferredTenant Json?
-  preferredGuests Json?
-
-  // 🔒 OTHER
-  restrictions        Json?
-  propertyDescription String?
-
-  // ⚙️ SYSTEM
-  currentStep Int      @default(1)
-  isDraft     Boolean  @default(true)
-  isDeleted   Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  // 🔗 RELATIONS
-  user   User    @relation(fields: [userId], references: [id])
-  likes  Like[]
-  visits Visit[]
-  messages Message[] @relation("PropertyMessages")
-   propertyViews PropertyView[]
-}
-
-model PropertyView {
-  id         Int      @id @default(autoincrement())
-  userId     Int
-  propertyId Int
-  createdAt  DateTime @default(now())
-
-  user     User     @relation(fields: [userId], references: [id])
-  property Property @relation(fields: [propertyId], references: [id])
-
-  @@unique([userId, propertyId])
-}
-
-model Message {
-  id          Int      @id @default(autoincrement())
-  senderId    Int
-  receiverId  Int
-  propertyId  Int
-  message     String
-  createdAt   DateTime @default(now())
-
-  sender   User     @relation("Sender", fields: [senderId], references: [id])
-  receiver User     @relation("Receiver", fields: [receiverId], references: [id])
-  property Property @relation("PropertyMessages", fields: [propertyId], references: [id])
-
-  @@index([propertyId])
-  @@index([senderId])
-  @@index([receiverId])
 }

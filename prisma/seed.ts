@@ -1,4 +1,4 @@
-import { PrismaClient, User, Property } from '@prisma/client';
+import { PrismaClient, User, PGDetails } from '@prisma/client';
 import { faker } from '@faker-js/faker';
 
 const prisma = new PrismaClient();
@@ -15,7 +15,7 @@ const tenants = ['Boys', 'Girls', 'Anyone'];
 
 async function main() {
   const users: User[] = [];
-  const properties: Property[] = [];
+  const properties: PGDetails[] = [];
 
   console.log('🚀 Seeding started...');
 
@@ -49,7 +49,7 @@ async function main() {
       const owner = faker.helpers.arrayElement(users);
       const rent = faker.number.int({ min: 5000, max: 18000 });
 
-      const property = await prisma.property.create({
+      const property = await prisma.pGDetails.create({
         data: {
           userId: owner.id,
 

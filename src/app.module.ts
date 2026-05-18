@@ -14,6 +14,9 @@ import { IvrModule } from "./ivr/ivr.module";
 import { AiModule } from "./ai/ai.module"; // 🔥 ADD THIS
 import { SpeechModule } from "./speech/speech.module";
 import { UserPreferenceModule } from "./user-preference/user-preference.module";
+import { ApartmentModule } from "./apartment/apartment.module";
+import { CommercialModule } from "./commercial/commercial.module";
+import { FlatmateModule } from './flatmate/flatmate.module';
 
 @Module({
   imports: [
@@ -41,6 +44,10 @@ import { UserPreferenceModule } from "./user-preference/user-preference.module";
     /// 🧠 AI MODULE (NEW)
     AiModule,
     SpeechModule,
+    
+    ApartmentModule,
+    CommercialModule,
+    FlatmateModule,
   ],
 })
 export class AppModule {}

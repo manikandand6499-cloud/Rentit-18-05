@@ -8,25 +8,27 @@ import {
   Body,
   Req,
   UseGuards,
-  UploadedFiles,
-  UploadedFile,
-  UseInterceptors,
   Query,
   BadRequestException,
+  ParseIntPipe, // ✅ ADD THIS
 } from '@nestjs/common';
 
 import { FilesInterceptor, FileInterceptor } from '@nestjs/platform-express';
-
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { PropertyService } from './property.service';
 import { CreateBasicDto } from './dto/create-basic.dto';
 import { CreateDetailsDto } from './dto/create-details.dto';
-import { CreateAmenitiesDto } from './dto/create-amenities.dto';
 import { CreateContactDto } from './dto/create-contact.dto';
-
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import {
+  UseInterceptors,
+  UploadedFiles,
+  UploadedFile,
+} from '@nestjs/common';
 import { UpdateLocationDto } from './dto/location.dto';
 
 import { uploadToR2 } from 'src/common/s3.upload';
+import { UpdateApartmentDto } from 'src/apartment/dto/update-apartment.dto';
+import { CreateAmenitiesDto } from './dto/create-amenities.dto';
 
 @Controller('property')
 @UseGuards(JwtAuthGuard)
@@ -94,16 +96,13 @@ getRecommended(
   AMENITIES
   ==============================
   */
-  @Put(':id/amenities')
-  updateAmenities(@Param('id') id: string, @Req() req, @Body() dto: CreateAmenitiesDto) {
-    return this.propertyService.updateAmenities(Number(id), req.user.userId, dto);
-  }
 
   /*
   ==============================
   UPLOAD IMAGES
   ==============================
   */
+ 
   @Post(':id/upload-images')
   @UseInterceptors(FilesInterceptor('files'))
   async uploadImages(
@@ -221,6 +220,23 @@ getAllProperties(@Req() req, @Query('city') city?: string) {
     return this.propertyService.deleteProperty(Number(id), req.user.userId);
   }
 
+  /*
+==============================
+AMENITIES
+==============================
+*/
+@Put(':id/amenities')
+updateAmenities(
+  @Param('id', ParseIntPipe) id: number,
+  @Req() req,
+  @Body() dto: CreateAmenitiesDto,
+) {
+  return this.propertyService.updateAmenities(
+    id,
+    req.user.userId,
+    dto,
+  );
+}
   /*
   ==============================
   VIEW COUNT

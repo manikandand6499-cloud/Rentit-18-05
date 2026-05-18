@@ -89,7 +89,7 @@ async get(userId: number) {
   console.log('🔥 PREF:', pref);
   console.log('🔥 SELECTED CITY:', selectedCity);
 
-  return this.prisma.property.findMany({
+  return this.prisma.pGDetails.findMany({
     where: {
       isDeleted: false,
       isDraft: false,

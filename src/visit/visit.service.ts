@@ -40,7 +40,7 @@ export class VisitService {
     }
 
     // 2️⃣ PROPERTY CHECK
-    const property = await this.prisma.property.findUnique({
+    const property = await this.prisma.pGDetails.findUnique({
       where: { id: propertyId },
     });
 
@@ -108,10 +108,18 @@ export class VisitService {
       },
     });
 
-   for (const v of oldVisits) {
-  if (!v.visitDateTime) continue; // ✅ FIX
+ for (const v of oldVisits) {
+  if (!v.visitDateTime) {
+    console.log("⚠️ Skipping invalid visit:", v.id);
+    continue;
+  }
 
   const oldTime = new Date(v.visitDateTime);
+
+  if (isNaN(oldTime.getTime())) {
+    console.log("⚠️ Invalid date found:", v.id);
+    continue;
+  }
 
   if (oldTime < new Date()) {
     await this.prisma.visit.update({

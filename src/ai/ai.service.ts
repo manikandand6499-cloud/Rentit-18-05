@@ -78,7 +78,7 @@
 //     }
 
 //     // STEP 3 → Query with fallback (if strict query returns 0, relax filters)
-//     let results = await this.prisma.property.findMany({
+//     let results = await this.prisma.pGDetails.findMany({
 //       where: whereClause,
 //       orderBy: { createdAt: 'desc' },
 //       take: 20,
@@ -101,7 +101,7 @@
 //           mode: 'insensitive',
 //         };
 //       }
-//       results = await this.prisma.property.findMany({
+//       results = await this.prisma.pGDetails.findMany({
 //         where: fallbackWhere,
 //         orderBy: { createdAt: 'desc' },
 //         take: 20,
@@ -111,7 +111,7 @@
 //     // 🔄 FINAL FALLBACK: If still no results, return latest PGs
 //     if (results.length === 0) {
 //       console.log('⚠️ No results even with relaxed — returning latest PGs');
-//       results = await this.prisma.property.findMany({
+//       results = await this.prisma.pGDetails.findMany({
 //         where: {
 //           isDeleted: false,
 //           isDraft: false,
@@ -411,7 +411,7 @@
 //       where.preferredTenant = { path: ['gender'], string_contains: gender };
 //     }
 
-//     return this.prisma.property.findMany({
+//     return this.prisma.pGDetails.findMany({
 //       where,
 //       orderBy: { createdAt: 'desc' },
 //       take: 10,
@@ -429,7 +429,7 @@
 //     };
 //     if (city) where.city = { contains: city, mode: 'insensitive' };
 
-//     return this.prisma.property.findMany({
+//     return this.prisma.pGDetails.findMany({
 //       where,
 //       orderBy: { createdAt: 'desc' },
 //       take: 8,
@@ -440,12 +440,12 @@
 //   // 🔥 NEW: Similar PGs (for "You may also like" section)
 //   // ─────────────────────────────────────────────────────────────────────
 //   async getSimilar(propertyId: number) {
-//     const property = await this.prisma.property.findUnique({
+//     const property = await this.prisma.pGDetails.findUnique({
 //       where: { id: propertyId },
 //     });
 //     if (!property) return [];
 
-//     return this.prisma.property.findMany({
+//     return this.prisma.pGDetails.findMany({
 //       where: {
 //         isDeleted: false,
 //         isDraft: false,
@@ -735,7 +735,7 @@
 //     };
 
 //     // TIER 1 — Full strict query
-//     const t1 = await this.prisma.property.findMany({
+//     const t1 = await this.prisma.pGDetails.findMany({
 //       where: this.buildWhere(filters, baseWhere),
 //       orderBy: { createdAt: 'desc' },
 //       take: 20,
@@ -746,7 +746,7 @@
 //     if (filters.locality || filters.city) {
 //       console.log('⚠️ T2: location-only...');
 //       const locOr = this.buildLocationOr(filters);
-//       const t2 = await this.prisma.property.findMany({
+//       const t2 = await this.prisma.pGDetails.findMany({
 //         where: { ...baseWhere, OR: locOr },
 //         orderBy: { createdAt: 'desc' },
 //         take: 20,
@@ -769,7 +769,7 @@
 //         { street:       { contains: word, mode: 'insensitive' } },
 //         { propertyName: { contains: word, mode: 'insensitive' } },
 //       ]);
-//       const t3 = await this.prisma.property.findMany({
+//       const t3 = await this.prisma.pGDetails.findMany({
 //         where: { ...baseWhere, OR: wordOr },
 //         orderBy: { createdAt: 'desc' },
 //         take: 20,
@@ -779,7 +779,7 @@
 
 //     // TIER 4 — Latest PGs (never show empty screen)
 //     console.log('⚠️ T4: latest PGs');
-//     return this.prisma.property.findMany({
+//     return this.prisma.pGDetails.findMany({
 //       where: baseWhere,
 //       orderBy: { createdAt: 'desc' },
 //       take: 20,
@@ -1035,7 +1035,7 @@
 //     };
 //     if (budget) where.price = { lte: budget };
 //     if (gender) where.preferredTenant = { path: ['gender'], string_contains: gender };
-//     return this.prisma.property.findMany({ where, orderBy: { createdAt: 'desc' }, take: 10 });
+//     return this.prisma.pGDetails.findMany({ where, orderBy: { createdAt: 'desc' }, take: 10 });
 //   }
 
 //   async getTrending(city?: string) {
@@ -1044,13 +1044,13 @@
 //       propertyType: { in: ['pg','PG','Pg','hostel','Hostel'] },
 //     };
 //     if (city) where.city = { contains: city, mode: 'insensitive' };
-//     return this.prisma.property.findMany({ where, orderBy: { createdAt: 'desc' }, take: 8 });
+//     return this.prisma.pGDetails.findMany({ where, orderBy: { createdAt: 'desc' }, take: 8 });
 //   }
 
 //   async getSimilar(propertyId: number) {
-//     const p = await this.prisma.property.findUnique({ where: { id: propertyId } });
+//     const p = await this.prisma.pGDetails.findUnique({ where: { id: propertyId } });
 //     if (!p) return [];
-//     return this.prisma.property.findMany({
+//     return this.prisma.pGDetails.findMany({
 //       where: {
 //         isDeleted: false, isDraft: false,
 //         id: { not: propertyId },
@@ -1279,7 +1279,7 @@ Return ONLY valid JSON. No markdown. No explanation. No extra text. Omit any fie
     };
 
     // TIER 1 — All filters strict
-    const t1 = await this.prisma.property.findMany({
+    const t1 = await this.prisma.pGDetails.findMany({
       where: this.buildWhere(filters, base),
       orderBy: { createdAt: 'desc' },
       take: 20,
@@ -1289,7 +1289,7 @@ Return ONLY valid JSON. No markdown. No explanation. No extra text. Omit any fie
     // TIER 2 — Location only (OR across locality / landmark / street / city)
     if (filters.locality || filters.city) {
       console.log('⚠️ T2: location-only fallback');
-      const t2 = await this.prisma.property.findMany({
+      const t2 = await this.prisma.pGDetails.findMany({
         where: { ...base, OR: this.locationOr(filters) },
         orderBy: { createdAt: 'desc' },
         take: 20,
@@ -1318,7 +1318,7 @@ Return ONLY valid JSON. No markdown. No explanation. No extra text. Omit any fie
         { street:       { contains: word, mode: 'insensitive' } },
         { propertyName: { contains: word, mode: 'insensitive' } },
       ]);
-      const t3 = await this.prisma.property.findMany({
+      const t3 = await this.prisma.pGDetails.findMany({
         where: { ...base, OR: wordOr },
         orderBy: { createdAt: 'desc' },
         take: 20,
@@ -1328,7 +1328,7 @@ Return ONLY valid JSON. No markdown. No explanation. No extra text. Omit any fie
 
     // TIER 4 — Latest PGs (never show empty)
     console.log('⚠️ T4: latest PGs fallback');
-    return this.prisma.property.findMany({
+    return this.prisma.pGDetails.findMany({
       where: base,
       orderBy: { createdAt: 'desc' },
       take: 20,
@@ -1434,7 +1434,7 @@ Generate exactly 6 items.`;
     };
     if (budget) where.price = { lte: budget };
     if (gender) where.preferredTenant = { path: ['gender'], string_contains: gender };
-    return this.prisma.property.findMany({ where, orderBy: { createdAt: 'desc' }, take: 10 });
+    return this.prisma.pGDetails.findMany({ where, orderBy: { createdAt: 'desc' }, take: 10 });
   }
 
 
@@ -1464,16 +1464,16 @@ Generate exactly 6 items.`;
       propertyType: { in: ['pg', 'PG', 'Pg', 'hostel', 'Hostel'] },
     };
     if (city) where.city = { contains: city, mode: 'insensitive' };
-    return this.prisma.property.findMany({ where, orderBy: { createdAt: 'desc' }, take: 8 });
+    return this.prisma.pGDetails.findMany({ where, orderBy: { createdAt: 'desc' }, take: 8 });
   }
 
   // ─────────────────────────────────────────────────────────────────────
   // 🏠 SIMILAR
   // ─────────────────────────────────────────────────────────────────────
   async getSimilar(propertyId: number) {
-    const p = await this.prisma.property.findUnique({ where: { id: propertyId } });
+    const p = await this.prisma.pGDetails.findUnique({ where: { id: propertyId } });
     if (!p) return [];
-    return this.prisma.property.findMany({
+    return this.prisma.pGDetails.findMany({
       where: {
         isDeleted: false, isDraft: false,
         id: { not: propertyId },

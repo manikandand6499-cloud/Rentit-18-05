@@ -1,0 +1,15 @@
+-- AlterTable
+ALTER TABLE "Apartment" ADD COLUMN     "amenities" TEXT[],
+ADD COLUMN     "bathroom" INTEGER,
+ADD COLUMN     "directions" TEXT,
+ADD COLUMN     "gateSecurity" BOOLEAN,
+ADD COLUMN     "gymAllowed" BOOLEAN,
+ADD COLUMN     "noOfBalcony" INTEGER,
+ADD COLUMN     "nonVegAllowed" BOOLEAN,
+ADD COLUMN     "petAllowed" BOOLEAN,
+ADD COLUMN     "photos" TEXT[],
+ADD COLUMN     "propertyCondition" JSONB,
+ADD COLUMN     "secondaryNumber" TEXT,
+ADD COLUMN     "shownBy" TEXT,
+ADD COLUMN     "unitsPropertiesAvailable" BOOLEAN,
+ADD COLUMN     "waterSupply" JSONB;
