@@ -1,22 +1,30 @@
+// src/main.ts
+
+import 'reflect-metadata';
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
-import { AppModule } from './app.module';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
-import { NestExpressApplication } from '@nestjs/platform-express';
-import 'reflect-metadata';
+
+import { AppModule } from './app.module';
+
+// Load .env file from project root
 dotenv.config({
-  path: path.resolve(__dirname, "../.env"),
+  path: path.resolve(__dirname, '../.env'),
 });
 
 async function bootstrap() {
-  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  const app =
+      await NestFactory.create<NestExpressApplication>(AppModule);
 
+  // Enable CORS
   app.enableCors({
     origin: true,
     credentials: true,
   });
 
+  // Global Validation Pipe
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -25,16 +33,21 @@ async function bootstrap() {
     }),
   );
 
-  app.useStaticAssets(path.join(__dirname, '..', 'uploads'), {
-    prefix: '/uploads/',
-  });
+  // Static uploads folder
+  app.useStaticAssets(
+    path.join(__dirname, '..', 'uploads'),
+    {
+      prefix: '/uploads/',
+    },
+  );
 
-  const port = process.env.PORT || 5000;
+  const port = Number(process.env.PORT) || 5000;
 
-  // 🔥 IMPORTANT CHANGE HERE
+  // Listen on all network interfaces
   await app.listen(port, '0.0.0.0');
 
-  console.log(`🚀 Server running on http://0.0.0.0:${port}`);
+  console.log(`🚀 Server running on the http://localhost:${port}`);
+  console.log(`🌐 Network URL: http://0.0.0.0:${port}`);
 }
 
 bootstrap();
