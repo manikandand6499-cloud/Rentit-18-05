@@ -151,12 +151,7 @@ async function main() {
     const property = faker.helpers.arrayElement(properties);
 
     try {
-      await prisma.propertyView.create({
-        data: {
-          userId: user.id,
-          propertyId: property.id,
-        },
-      });
+   
     } catch {}
   }
 

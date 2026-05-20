@@ -71,6 +71,7 @@ export class LikeService {
       });
 
       return {
+
         success: true,
         liked: true,
         message: 'Flatmate liked',
@@ -134,18 +135,28 @@ export class LikeService {
   // ─────────────────────────────────────────────
   // GET MY LIKES
   // ─────────────────────────────────────────────
-  async getMyLikes(userId: number) {
-    return this.prisma.like.findMany({
-      where: {
-        userId,
-      },
-      include: {
-        property: true,
-        flatmate: true,
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-    });
-  }
+// like.service.ts
+
+// ─────────────────────────────────────────────
+// GET MY LIKES
+// ─────────────────────────────────────────────
+async getMyLikes(userId: number) {
+  return this.prisma.like.findMany({
+    where: {
+      userId,
+    },
+
+    include: {
+      // ✅ PG / Apartment property details
+      property: true,
+
+      // ✅ Flatmate details
+      flatmate: true,
+    },
+
+    orderBy: {
+      createdAt: 'desc',
+    },
+  });
+}
 }

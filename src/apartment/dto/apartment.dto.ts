@@ -192,4 +192,8 @@ export class ApartmentDto {
 
   @IsOptional()
   availableAllDay?: boolean;
+
+  @IsOptional()
+@IsNumber()
+viewscount?: number;
 }

@@ -213,4 +213,13 @@ update(
       dto,
     );
   }
+
+
+  // VIEW COUNT INCREMENT
+@Post(':id/view')
+incrementView(
+  @Param('id', ParseIntPipe) id: number,
+) {
+  return this.apartmentService.incrementViewCount(id);
+}
 }

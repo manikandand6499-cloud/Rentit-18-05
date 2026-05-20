@@ -171,4 +171,14 @@ export class CreateDetailsDto {
   @Type(() => Number)
   @IsNumber()
   currentStep?: number;
+
+  
+
+
+@IsOptional()
+@Type(() => Number)
+@IsNumber()
+viewscount?: number;
+
+
 }

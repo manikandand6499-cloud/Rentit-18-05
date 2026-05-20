@@ -110,21 +110,7 @@ export class ApartmentService {
     });
   }
 
-  // GET ONE
-  async getApartment(id: number) {
-    const apartment =
-      await this.prisma.apartment.findUnique({
-        where: { id },
-      });
 
-    if (!apartment) {
-      throw new NotFoundException(
-        'Apartment not found',
-      );
-    }
-
-    return apartment;
-  }
 
   // UPDATE
   async updateApartment(
@@ -429,5 +415,41 @@ async saveAvailability(
     },
   });
 }
-  
+
+
+// INCREMENT VIEW COUNT
+async incrementViewCount(id: number) {
+  const apartment = await this.prisma.apartment.findUnique({
+    where: { id },
+  });
+
+  if (!apartment) {
+    throw new NotFoundException('Apartment not found');
+  }
+
+  return this.prisma.apartment.update({
+    where: { id },
+    data: {
+      viewscount: {
+        increment: 1,
+      },
+    },
+  });
+}
+
+
+async getApartment(id: number) {
+  const apartment = await this.prisma.apartment.findUnique({
+    where: { id },
+    include: {
+      user: true,
+    },
+  });
+ 
+  if (!apartment) {
+    throw new NotFoundException('Apartment not found');
+  }
+
+  return apartment;
+}
 }

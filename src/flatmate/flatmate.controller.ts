@@ -1,3 +1,5 @@
+// flatmate.controller.ts
+
 import {
   BadRequestException,
   Body,
@@ -210,4 +212,19 @@ export class FlatmateController {
     const userId = this.resolveUserId(req);
     return this.flatmateService.deleteFlatmate(id, userId);
   }
+
+  @Get(':id/details')
+getFlatmateDetails(
+  @Param('id', ParseIntPipe) id: number,
+) {
+  return this.flatmateService.getFlatmateAndIncrementView(id);
+}
+
+// ONLY INCREMENT VIEW COUNT
+@Post(':id/view')
+addView(
+  @Param('id', ParseIntPipe) id: number,
+) {
+  return this.flatmateService.incrementViewCount(id);
+}
 }

@@ -1,3 +1,5 @@
+// flatmate.service.ts
+
 import {
   ForbiddenException,
   Injectable,
@@ -137,45 +139,172 @@ export class FlatmateService {
   // UPDATE
   // ──────────────────────────────────────────────────────────
 
-  async updateFlatmate(id: number, dto: FlatmateDto, userId: number) {
-    await this.checkOwner(id, userId);
+ async updateFlatmate(id: number, dto: FlatmateDto, userId: number) {
+  await this.checkOwner(id, userId);
 
-    return this.prisma.flatmate.update({
-      where: { id },
-      data: {
-        ...(dto.apartmentType !== undefined && { apartmentType: dto.apartmentType }),
-        ...(dto.apartmentName !== undefined && { apartmentName: dto.apartmentName }),
-        ...(dto.bhkType       !== undefined && { bhkType:       dto.bhkType }),
-        ...(dto.floor         !== undefined && { floor:         dto.floor }),
-        ...(dto.totalFloor    !== undefined && { totalFloor:    dto.totalFloor }),
-        ...(dto.roomType      !== undefined && { roomType:      dto.roomType }),
-        ...(dto.tenantType    !== undefined && { tenantType:    dto.tenantType }),
-        ...(dto.propertyAge   !== undefined && { propertyAge:   dto.propertyAge }),
-        ...(dto.facing        !== undefined && { facing:        dto.facing }),
+  return this.prisma.flatmate.update({
+    where: { id },
+    data: {
+      // ── Basic ─────────────────────────────
+      ...(dto.city !== undefined && { city: dto.city }),
+      ...(dto.propertyType !== undefined && {
+        propertyType: dto.propertyType,
+      }),
 
-        ...(dto.builtUpArea != null && { builtUpArea: Number(dto.builtUpArea) }),
+      // ── Property Details ─────────────────
+      ...(dto.apartmentType !== undefined && {
+        apartmentType: dto.apartmentType,
+      }),
+      ...(dto.apartmentName !== undefined && {
+        apartmentName: dto.apartmentName,
+      }),
+      ...(dto.bhkType !== undefined && { bhkType: dto.bhkType }),
+      ...(dto.floor !== undefined && { floor: dto.floor }),
+      ...(dto.totalFloor !== undefined && {
+        totalFloor: dto.totalFloor,
+      }),
+      ...(dto.roomType !== undefined && {
+        roomType: dto.roomType,
+      }),
+      ...(dto.tenantType !== undefined && {
+        tenantType: dto.tenantType,
+      }),
+      ...(dto.propertyAge !== undefined && {
+        propertyAge: dto.propertyAge,
+      }),
+      ...(dto.facing !== undefined && {
+        facing: dto.facing,
+      }),
 
-        ...(dto.locality !== undefined && { locality: dto.locality }),
-        ...(dto.street   !== undefined && { street:   dto.street }),
-        ...(dto.landmark !== undefined && { landmark: dto.landmark }),
+      ...(dto.builtUpArea != null && {
+        builtUpArea: Number(dto.builtUpArea),
+      }),
 
-        ...(dto.latitude  != null && { latitude:  Number(dto.latitude) }),
-        ...(dto.longitude != null && { longitude: Number(dto.longitude) }),
+      // ── Location ─────────────────────────
+      ...(dto.locality !== undefined && {
+        locality: dto.locality,
+      }),
+      ...(dto.street !== undefined && {
+        street: dto.street,
+      }),
+      ...(dto.landmark !== undefined && {
+        landmark: dto.landmark,
+      }),
 
-        ...(dto.expectedRent    != null && { expectedRent:    Number(dto.expectedRent) }),
-        ...(dto.expectedDeposit != null && { expectedDeposit: Number(dto.expectedDeposit) }),
+      ...(dto.latitude != null && {
+        latitude: Number(dto.latitude),
+      }),
+      ...(dto.longitude != null && {
+        longitude: Number(dto.longitude),
+      }),
 
-        ...(dto.maintenanceType   !== undefined && { maintenanceType:   dto.maintenanceType }),
-        ...(dto.maintenanceAmount != null       && { maintenanceAmount: Number(dto.maintenanceAmount) }),
+      // ── Rent ─────────────────────────────
+      ...(dto.expectedRent != null && {
+        expectedRent: Number(dto.expectedRent),
+      }),
+      ...(dto.expectedDeposit != null && {
+        expectedDeposit: Number(dto.expectedDeposit),
+      }),
 
-        ...(dto.availableFrom && { availableFrom: new Date(dto.availableFrom) }),
+      ...(dto.maintenanceType !== undefined && {
+        maintenanceType: dto.maintenanceType,
+      }),
+      ...(dto.maintenanceAmount != null && {
+        maintenanceAmount: Number(dto.maintenanceAmount),
+      }),
 
-        ...(dto.furnishing  !== undefined && { furnishing:  dto.furnishing }),
-        ...(dto.parking     !== undefined && { parking:     dto.parking }),
-        ...(dto.description !== undefined && { description: dto.description }),
-      },
-    });
-  }
+      ...(dto.availableFrom && {
+        availableFrom: new Date(dto.availableFrom),
+      }),
+
+      ...(dto.furnishing !== undefined && {
+        furnishing: dto.furnishing,
+      }),
+      ...(dto.parking !== undefined && {
+        parking: dto.parking,
+      }),
+      ...(dto.description !== undefined && {
+        description: dto.description,
+      }),
+
+      // ── Room Details ─────────────────────
+      ...(dto.attachedBathroom !== undefined && {
+        attachedBathroom: dto.attachedBathroom,
+      }),
+      ...(dto.bathroomType !== undefined && {
+        bathroomType: dto.bathroomType,
+      }),
+      ...(dto.acRoom !== undefined && {
+        acRoom: dto.acRoom,
+      }),
+      ...(dto.balcony !== undefined && {
+        balcony: dto.balcony,
+      }),
+
+      // ── Preferences ──────────────────────
+      ...(dto.nonVegAllowed !== undefined && {
+        nonVegAllowed: dto.nonVegAllowed,
+      }),
+      ...(dto.smokingAllowed !== undefined && {
+        smokingAllowed: dto.smokingAllowed,
+      }),
+      ...(dto.drinkingAllowed !== undefined && {
+        drinkingAllowed: dto.drinkingAllowed,
+      }),
+
+      // ── Amenities ────────────────────────
+      ...(dto.gym !== undefined && {
+        gym: dto.gym,
+      }),
+      ...(dto.gatedSecurity !== undefined && {
+        gatedSecurity: dto.gatedSecurity,
+      }),
+      ...(dto.liftSelected !== undefined && {
+        liftSelected: dto.liftSelected,
+      }),
+      ...(dto.swimmingPoolSelected !== undefined && {
+        swimmingPoolSelected: dto.swimmingPoolSelected,
+      }),
+      ...(dto.clubHouseSelected !== undefined && {
+        clubHouseSelected: dto.clubHouseSelected,
+      }),
+      ...(dto.powerBackupSelected !== undefined && {
+        powerBackupSelected: dto.powerBackupSelected,
+      }),
+      ...(dto.parkSelected !== undefined && {
+        parkSelected: dto.parkSelected,
+      }),
+
+      // ── Contact ──────────────────────────
+      ...(dto.whoShowsProperty !== undefined && {
+        whoShowsProperty: dto.whoShowsProperty,
+      }),
+      ...(dto.secondaryNumber !== undefined && {
+        secondaryNumber: dto.secondaryNumber,
+      }),
+      ...(dto.waterSupply !== undefined && {
+        waterSupply: dto.waterSupply,
+      }),
+      ...(dto.directionsTip !== undefined && {
+        directionsTip: dto.directionsTip,
+      }),
+
+      // ── Availability ─────────────────────
+   ...(dto.availabilityDay !== undefined && {
+  availabilityDay: dto.availabilityDay,
+}),
+...(dto.startTime !== undefined && {
+  startTime: dto.startTime,
+}),
+...(dto.endTime !== undefined && {
+  endTime: dto.endTime,
+}),
+...(dto.availableAllDay !== undefined && {
+  availableAllDay: dto.availableAllDay,
+}),
+    },
+  });
+}
 
   // ──────────────────────────────────────────────────────────
   // ADDITIONAL DETAILS
@@ -266,4 +395,48 @@ export class FlatmateService {
 
     return this.prisma.flatmate.delete({ where: { id } });
   }
+
+  // Increment only
+async incrementViewCount(id: number) {
+  const flatmate = await this.prisma.flatmate.findUnique({
+    where: { id },
+  });
+
+  if (!flatmate) {
+    throw new NotFoundException('Flatmate listing not found');
+  }
+
+  return this.prisma.flatmate.update({
+    where: { id },
+    data: {
+      viewscount: {
+        increment: 1,
+      },
+    },
+    select: {
+      id: true,
+      viewscount: true,
+    },
+  });
+}
+
+// Get details + increment
+async getFlatmateAndIncrementView(id: number) {
+  const flatmate = await this.prisma.flatmate.findUnique({
+    where: { id },
+  });
+
+  if (!flatmate) {
+    throw new NotFoundException('Flatmate listing not found');
+  }
+
+  return this.prisma.flatmate.update({
+    where: { id },
+    data: {
+      viewscount: {
+        increment: 1,
+      },
+    },
+  });
+}
 }

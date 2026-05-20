@@ -22,4 +22,9 @@ export class CreateVisitDto {
   @IsString()
   @IsNotEmpty()
   time: string | undefined;
+
+  
+  @IsString()
+  @IsNotEmpty()
+  propertyType: string; 
 }

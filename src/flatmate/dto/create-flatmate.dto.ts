@@ -174,6 +174,10 @@ export class FlatmateDto {
   @IsBoolean()
   parkSelected?: boolean;
 
+  @IsOptional()
+  @IsNumber()
+  viewscount?: number;
+
   // ── CONTACT ──────────────────────────────────────────────
 
   @IsOptional()

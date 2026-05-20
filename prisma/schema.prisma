@@ -26,7 +26,6 @@ model User {
   receivedMessages  Message[]        @relation("Receiver")
   sentMessages      Message[]        @relation("Sender")
   properties        PGDetails[]
-  propertyViews     PropertyView[]
   subscriptions     Subscription[]
   UserPreference    UserPreference[]
   visits            Visit[]
@@ -99,6 +98,7 @@ model Visit {
   id            Int         @id @default(autoincrement())
   date          String?
   time          String?
+  propertyType  String?
   language      String      @default("en")
   userId        Int
   propertyId    Int
@@ -113,6 +113,8 @@ model Visit {
   @@index([propertyId])
   @@index([status])
 }
+
+
 
 model PGDetails {
   id                  Int            @id @default(autoincrement())
@@ -130,6 +132,7 @@ model PGDetails {
   foodType            Json?
   pgAmenities         Json?
   parking             String?
+  propertyType2       String?
   availableFrom       DateTime?
   noticePeriod        Int?
   gateClosingTime     DateTime?
@@ -143,6 +146,13 @@ model PGDetails {
   preferredGuests     Json?
   restrictions        Json?
   propertyDescription String?
+
+  availableAllDay          Boolean?
+  endTime                  String?
+  startTime                String?
+  availabilityDay         Json?
+
+  viewscount          Int       @default(0)
   currentStep         Int            @default(1)
   isDraft             Boolean        @default(true)
   isDeleted           Boolean        @default(false)
@@ -151,11 +161,10 @@ model PGDetails {
   likes               Like[]
   messages            Message[]      @relation("PropertyMessages")
   user                User           @relation(fields: [userId], references: [id])
-  propertyViews       PropertyView[]
   visits              Visit[]
-
-  @@map("Property")
+  @@map("Property") 
 }
+
 
 model Commercial {
   id                      Int      @id @default(autoincrement())
@@ -194,6 +203,7 @@ model Commercial {
   video                   String?
   description             String?
   availabilityDay         Json?
+ viewscount              Int      @default(0)
   startTime               String?
   endTime                 String?
   availableAllDay         Boolean?
@@ -206,16 +216,7 @@ model Commercial {
   user                    User     @relation(fields: [userId], references: [id])
 }
 
-model PropertyView {
-  id         Int       @id @default(autoincrement())
-  userId     Int
-  propertyId Int
-  createdAt  DateTime  @default(now())
-  property   PGDetails @relation(fields: [propertyId], references: [id])
-  user       User      @relation(fields: [userId], references: [id])
 
-  @@unique([userId, propertyId])
-}
 
 model Message {
   id         Int       @id @default(autoincrement())
@@ -285,10 +286,12 @@ model Flatmate {
   availableAllDay      Boolean?
   endTime              String?
   images               String[]  @default([])
+  viewscount           Int       @default(0)
   startTime            String?
   video                String?
   user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   Like                 Like[]
+  
 }
 
 model Apartment {
@@ -338,6 +341,7 @@ model Apartment {
   waterSupply              Json?
   availabilityDay          Json?
   images                   String[] @default([])
+  viewscount               Int       @default(0)
   video                    String?
   availableAllDay          Boolean?
   endTime                  String?

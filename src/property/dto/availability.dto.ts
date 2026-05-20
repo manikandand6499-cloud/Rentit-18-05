@@ -1,8 +1,6 @@
-import { IsOptional, IsBoolean, IsString,   } from "class-validator";
-import { Type } from "class-transformer";
+import { IsOptional, IsString, IsBoolean } from 'class-validator';
 
-export class UpdateAvailabilityDto {
-
+export class CreateScheduleDto {
   @IsOptional()
   availabilityDay?: any;
 
@@ -16,6 +14,5 @@ export class UpdateAvailabilityDto {
 
   @IsOptional()
   @IsBoolean()
-  @Type(() => Boolean)
   availableAllDay?: boolean;
 }

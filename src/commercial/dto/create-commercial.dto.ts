@@ -82,6 +82,9 @@ export class CreateCommercialDto {
   @IsOptional()
   lockinPeriod?: string;
 
+@IsOptional()
+viewscount?: number;
+
   @IsOptional()
   availableFrom?: string;
 

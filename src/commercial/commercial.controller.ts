@@ -151,4 +151,10 @@ async uploadImages(
   ) {
     return this.commercialService.saveAvailability(id, req.user.userId, dto);
   }
+
+  // Increment views count
+@Post(":id/view")
+incrementViews(@Param("id", ParseIntPipe) id: number) {
+  return this.commercialService.incrementViews(id);
+}
 }
