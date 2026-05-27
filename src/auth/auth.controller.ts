@@ -23,7 +23,7 @@ export class AuthController {
 
     const { name, email, mobile } = body;
 
-    // Check existing user
+    // Check existing user.....
     let user = await this.prisma.user.findFirst({
       where: {
         email
