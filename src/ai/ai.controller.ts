@@ -42,33 +42,76 @@ export class AiController {
 
   ) {
 
-    console.log(
-      '🌐 CONTROLLER LANGUAGE =>',
-      language,
-    );
+    try {
 
-    const uid =
-      Number(userId) || 0;
-
-    const result =
-
-      await this.aiService.processWithGemini(
-
-        query,
-
-        uid,
-
-        language || 'en',
-
+      console.log(
+        '🌐 CONTROLLER LANGUAGE =>',
+        language,
       );
 
-    return {
+      console.log(
+        '📝 QUERY =>',
+        query,
+      );
 
-      success: true,
+      console.log(
+        '👤 USER ID =>',
+        userId,
+      );
 
-      ...result,
+      const uid =
+        Number(userId) || 0;
 
-    };
+      const result =
+
+        await this.aiService.processWithGemini(
+
+          query,
+
+          uid,
+
+          language || 'en',
+
+        );
+
+      return {
+
+        success: true,
+
+        ...result,
+
+      };
+
+    } catch (error: any) {
+
+      console.log(
+        '🔥 AI CONTROLLER ERROR =>',
+        error,
+      );
+
+      console.log(
+        '🔥 AI CONTROLLER ERROR MESSAGE =>',
+        error?.message,
+      );
+
+      console.log(
+        '🔥 AI CONTROLLER ERROR RESPONSE =>',
+        error?.response?.data,
+      );
+
+      return {
+
+        success: false,
+
+        reply:
+          'Backend crashed',
+
+        error:
+          error?.message ||
+          'Unknown error',
+
+      };
+    }
   }
 
   // =========================================
