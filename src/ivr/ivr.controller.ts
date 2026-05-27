@@ -7,7 +7,7 @@ import {
   Res,
 } from '@nestjs/common';
 import type { Response } from 'express';
-import { PrismaService } from '../../prisma/prisma.service';
+import { PrismaService } from '../prisma/prisma.service';
 import { IvrService } from './ivr.service';
 import { VisitStatus } from '@prisma/client';
 

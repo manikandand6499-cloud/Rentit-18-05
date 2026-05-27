@@ -1,86 +1,138 @@
-import { Injectable, UnauthorizedException } from "@nestjs/common";
-import { PrismaService } from "../../prisma/prisma.service";
+import {
+  Injectable,
+  UnauthorizedException,
+} from "@nestjs/common";
+
+import { PrismaService } from "../prisma/prisma.service";
 import { JwtService } from "@nestjs/jwt";
-import { Twilio } from "twilio";
+
+import axios from "axios";
 
 @Injectable()
 export class AuthService {
-  private twilioClient: Twilio;
-
   constructor(
     private prisma: PrismaService,
     private jwtService: JwtService,
-  ) {
-    this.twilioClient = new Twilio(
-      process.env.TWILIO_ACCOUNT_SID,
-      process.env.TWILIO_AUTH_TOKEN
-    );
+  ) {}
+
+  /// NORMALIZE PHONE
+  normalizePhone(phone: string) {
+    return phone.replace(/\D/g, "").trim();
   }
 
+  /// SEND OTP
   async sendOtp(mobile: string) {
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    mobile = this.normalizePhone(mobile);
 
-    const expiresAt = new Date();
-    expiresAt.setMinutes(expiresAt.getMinutes() + 5);
+    console.log("📤 Sending OTP:", mobile);
 
-    // delete old OTPs
-    await this.prisma.otp.deleteMany({ where: { mobile } });
+    const response = await axios.get(
+      `https://2factor.in/API/V1/${process.env.API_KEY}/SMS/+91${mobile}/AUTOGEN`
+    );
 
-    // save new OTP
-    await this.prisma.otp.create({
-      data: {
+    console.log("2Factor:", response.data);
+
+    if (response.data.Status !== "Success") {
+      throw new UnauthorizedException(
+        "Failed to send OTP"
+      );
+    }
+
+    const sessionId = response.data.Details;
+
+    // DELETE OLD SESSION
+    await this.prisma.otpSession.deleteMany({
+      where: {
         mobile,
-        otp,
-        expiresAt,
       },
     });
 
-    // send sms using Twilio
-    await this.twilioClient.messages.create({
-      body: `your otp  : ${otp}`,
-      from: process.env.TWILIO_PHONE_NUMBER,
-      to: `+91${mobile}`,   // India format
+    // SAVE SESSION
+    await this.prisma.otpSession.create({
+      data: {
+        mobile,
+        sessionId,
+      },
     });
 
-    return { message: "OTP is  sent the successfully" };
+    return {
+      success: true,
+      message: "OTP sent successfully",
+    };
   }
 
-  async verifyOtp(mobile: string, otp: string) {
-    const record = await this.prisma.otp.findFirst({
-      where: { mobile, otp },
-    });
+  /// VERIFY OTP
+  async verifyOtp(
+    mobile: string,
+    otp: string,
+  ) {
+    mobile = this.normalizePhone(mobile);
 
-    if (!record) {
-      throw new UnauthorizedException("Invalid OTP");
+    const session =
+      await this.prisma.otpSession.findFirst({
+        where: { mobile },
+        orderBy: {
+          createdAt: "desc",
+        },
+      });
+
+    if (!session) {
+      throw new UnauthorizedException(
+        "OTP session expired",
+      );
     }
 
-    if (record.expiresAt < new Date()) {
-      throw new UnauthorizedException("OTP expired");
+    console.log(
+      "📲 Verifying:",
+      session.sessionId,
+    );
+
+    const response = await axios.get(
+      `https://2factor.in/API/V1/${process.env.API_KEY}/SMS/VERIFY/${session.sessionId}/${otp}`
+    );
+
+    console.log(response.data);
+
+    if (response.data.Status !== "Success") {
+      throw new UnauthorizedException(
+        "Invalid OTP",
+      );
     }
 
-    // delete OTP after success
-    await this.prisma.otp.deleteMany({ where: { mobile } });
-
-    // create user if not exists
-    let user = await this.prisma.user.findUnique({
-      where: { mobile },
+    // DELETE OTP SESSION
+    await this.prisma.otpSession.deleteMany({
+      where: {
+        mobile,
+      },
     });
 
+    // CHECK USER
+    let user =
+      await this.prisma.user.findUnique({
+        where: {
+          mobile,
+        },
+      });
+
+    // CREATE USER
     if (!user) {
       user = await this.prisma.user.create({
-        data: { mobile },
+        data: {
+          mobile,
+        },
       });
     }
 
+    // JWT TOKEN
     const token = this.jwtService.sign({
       userId: user.id,
       mobile: user.mobile,
     });
 
     return {
-      message: "OTP verified successfully",
+      success: true,
       token,
       user,
     };
   }
-}
+} 

@@ -54,6 +54,17 @@ model Otp {
   createdAt DateTime @default(now())
 }
 
+
+model OtpSession {
+  id         String   @id @default(uuid())
+  mobile     String
+  sessionId  String
+  createdAt  DateTime @default(now())
+
+  @@index([mobile])
+  @@index([createdAt])
+}
+
 model UserPreference {
   id              Int      @id @default(autoincrement())
   userId          Int
@@ -98,7 +109,6 @@ model Visit {
   id            Int         @id @default(autoincrement())
   date          String?
   time          String?
-  propertyType  String?
   language      String      @default("en")
   userId        Int
   propertyId    Int
@@ -106,6 +116,7 @@ model Visit {
   isCalled      Boolean     @default(false)
   visitDateTime DateTime?
   status        VisitStatus @default(pending)
+  propertyType  String?
   property      PGDetails   @relation(fields: [propertyId], references: [id])
   user          User        @relation(fields: [userId], references: [id])
 
@@ -114,10 +125,8 @@ model Visit {
   @@index([status])
 }
 
-
-
 model PGDetails {
-  id                  Int            @id @default(autoincrement())
+  id                  Int       @id @default(autoincrement())
   userId              Int
   city                String
   locality            String
@@ -132,11 +141,10 @@ model PGDetails {
   foodType            Json?
   pgAmenities         Json?
   parking             String?
-  propertyType2       String?
   availableFrom       DateTime?
   noticePeriod        Int?
   gateClosingTime     DateTime?
-  images              String[]       @default([])
+  images              String[]  @default([])
   video               String?
   contactName         String?
   mobileNo            String?
@@ -146,25 +154,24 @@ model PGDetails {
   preferredGuests     Json?
   restrictions        Json?
   propertyDescription String?
-
-  availableAllDay          Boolean?
-  endTime                  String?
-  startTime                String?
-  availabilityDay         Json?
-
+  currentStep         Int       @default(1)
+  isDraft             Boolean   @default(true)
+  isDeleted           Boolean   @default(false)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
   viewscount          Int       @default(0)
-  currentStep         Int            @default(1)
-  isDraft             Boolean        @default(true)
-  isDeleted           Boolean        @default(false)
-  createdAt           DateTime       @default(now())
-  updatedAt           DateTime       @updatedAt
+  propertyType2       String?
+  availabilityDay     Json?
+  availableAllDay     Boolean?
+  endTime             String?
+  startTime           String?
   likes               Like[]
-  messages            Message[]      @relation("PropertyMessages")
-  user                User           @relation(fields: [userId], references: [id])
+  messages            Message[] @relation("PropertyMessages")
+  user                User      @relation(fields: [userId], references: [id])
   visits              Visit[]
-  @@map("Property") 
-}
 
+  @@map("Property")
+}
 
 model Commercial {
   id                      Int      @id @default(autoincrement())
@@ -203,7 +210,6 @@ model Commercial {
   video                   String?
   description             String?
   availabilityDay         Json?
- viewscount              Int      @default(0)
   startTime               String?
   endTime                 String?
   availableAllDay         Boolean?
@@ -213,10 +219,9 @@ model Commercial {
   commercialPropertyType  String?
   commercialOtherFeatures Json?
   slots                   String?
+  viewscount              Int      @default(0)
   user                    User     @relation(fields: [userId], references: [id])
 }
-
-
 
 model Message {
   id         Int       @id @default(autoincrement())
@@ -286,12 +291,11 @@ model Flatmate {
   availableAllDay      Boolean?
   endTime              String?
   images               String[]  @default([])
-  viewscount           Int       @default(0)
   startTime            String?
   video                String?
+  viewscount           Int       @default(0)
   user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   Like                 Like[]
-  
 }
 
 model Apartment {
@@ -341,11 +345,11 @@ model Apartment {
   waterSupply              Json?
   availabilityDay          Json?
   images                   String[] @default([])
-  viewscount               Int       @default(0)
   video                    String?
   availableAllDay          Boolean?
   endTime                  String?
   startTime                String?
+  viewscount               Int      @default(0)
   user                     User     @relation(fields: [userId], references: [id])
 }
 

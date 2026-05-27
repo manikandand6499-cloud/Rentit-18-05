@@ -10,53 +10,160 @@ import {
   ParseIntPipe,
   HttpCode,
 } from '@nestjs/common';
+
 import { AiService } from './ai.service';
 
 @Controller('ai')
-export class AiController {
-  constructor(private aiService: AiService) {}
 
-  // 🔍 Main multilingual search (USED BY APP)
+export class AiController {
+
+  constructor(
+    private aiService: AiService,
+  ) {}
+
+  // =========================================
+  // MAIN SEARCH
+  // =========================================
+
   @Post('search')
+
   @HttpCode(200)
-  async search(@Body('query') query: string) {
-    const result = await this.aiService.processWithGemini(query);
+
+  async search(
+
+    @Body('query')
+    query: string,
+
+    @Body('userId')
+    userId: number,
+
+    @Body('language')
+    language: string,
+
+  ) {
+
+    console.log(
+      '🌐 CONTROLLER LANGUAGE =>',
+      language,
+    );
+
+    const uid =
+      Number(userId) || 0;
+
+    const result =
+
+      await this.aiService.processWithGemini(
+
+        query,
+
+        uid,
+
+        language || 'en',
+
+      );
 
     return {
+
       success: true,
+
       ...result,
+
     };
   }
 
-  // 🌟 Recommended PGs
-  @Get('recommendations')
-  recommendations(
-    @Query('city') city: string,
-    @Query('budget') budget?: string,
-    @Query('gender') gender?: string,
+  // =========================================
+  // DB SEARCH
+  // =========================================
+
+  @Post('db-search')
+
+  dbSearch(
+    @Body('query')
+    query: string,
   ) {
-    return this.aiService.getRecommendations(
-      city,
-      budget ? parseInt(budget) : undefined,
-      gender,
+
+    return this.aiService.dbSearch(
+      query,
     );
   }
 
-  // 🔥 Trending PGs
+  // =========================================
+  // RECOMMENDATIONS
+  // =========================================
+
+  @Get('recommendations')
+
+  recommendations(
+
+    @Query('city')
+    city: string,
+
+    @Query('budget')
+    budget?: string,
+
+    @Query('gender')
+    gender?: string,
+
+  ) {
+
+    return this.aiService.getRecommendations(
+
+      city,
+
+      budget
+        ? parseInt(budget)
+        : undefined,
+
+      gender,
+
+    );
+  }
+
+  // =========================================
+  // TRENDING
+  // =========================================
+
   @Get('trending')
-  trending(@Query('city') city?: string) {
-    return this.aiService.getTrending(city);
+
+  trending(
+    @Query('city')
+    city?: string,
+  ) {
+
+    return this.aiService.getTrending(
+      city,
+    );
   }
 
-  // 🏠 Similar PGs
+  // =========================================
+  // SIMILAR
+  // =========================================
+
   @Get('similar/:id')
-  similar(@Param('id', ParseIntPipe) id: number) {
-    return this.aiService.getSimilar(id);
+
+  similar(
+    @Param('id', ParseIntPipe)
+    id: number,
+  ) {
+
+    return this.aiService.getSimilar(
+      id,
+    );
   }
 
-  // 👁 Track view
+  // =========================================
+  // VIEW COUNT
+  // =========================================
+
   @Post('view/:id')
-  view(@Param('id', ParseIntPipe) id: number) {
-    return this.aiService.incrementView(id);
+
+  view(
+    @Param('id', ParseIntPipe)
+    id: number,
+  ) {
+
+    return this.aiService.incrementView(
+      id,
+    );
   }
 }

@@ -7,6 +7,7 @@ export class PrismaService
   implements OnModuleInit {
   property: any;
 
+
   async onModuleInit() {
     await this.$connect();
   }

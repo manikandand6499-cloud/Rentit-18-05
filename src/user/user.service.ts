@@ -1,6 +1,6 @@
 // user.service.ts
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { PrismaService } from '../../prisma/prisma.service';
+import { PrismaService } from '../prisma/prisma.service';
 import { UpdateUserLocationDto } from 'src/user/dto/location.dto';
 
 @Injectable()

@@ -5,7 +5,7 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import Razorpay from 'razorpay';
 import * as crypto from 'crypto';
-import { PrismaService } from '../../prisma/prisma.service';
+import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class RazorpayService {

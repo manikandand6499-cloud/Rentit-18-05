@@ -47,4 +47,10 @@ export class LikeController {
 
     return this.likeService.getMyLikes(userId);
   }
+  @Get(":userId")
+getUserLikes(
+  @Param("userId", ParseIntPipe) userId: number,
+) {
+  return this.likeService.getMyLikes(userId);
+}
 }
