@@ -379,4 +379,19 @@ export class VisitService {
       data: { status: "cancelled" },
     });
   }
+
+  async getVisitsForOwner(ownerId: number) {
+  return this.prisma.visit.findMany({
+    where: {
+      property: {
+        userId: ownerId,   // visits on properties this owner listed
+      },
+    },
+    include: {
+      property: true,
+      user: true,          // the tenant who booked
+    },
+    orderBy: { visitDateTime: 'desc' },
+  });
+}
 }

@@ -95,4 +95,15 @@ export class VisitController {
   cancelVisit(@Param("id", ParseIntPipe) id: number) {
     return this.visitService.cancelVisit(id);
   }
+
+
+
+  @Get('owner')
+@HttpCode(HttpStatus.OK)
+getOwnerVisits(@Req() req: any) {
+  const userId: number = req.user?.userId ?? req.user?.id;
+  if (!userId) throw new BadRequestException('User not authenticated');
+  return this.visitService.getVisitsForOwner(userId);
+}
+
 }
