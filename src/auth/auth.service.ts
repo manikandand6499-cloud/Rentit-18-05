@@ -13,23 +13,16 @@ export class AuthService {
     private jwtService: JwtService,
   ) {}
 
-  normalizePhone(phone: string) {
-    const digits = phone.replace(/\D/g, "");
+normalizePhone(phone: string): string {
+  const digits = phone.replace(/\D/g, "");
 
-    if (digits.length === 12 && digits.startsWith("91")) {
-      return digits;
-    }
+  // Always store 10-digit mobile numbers in DB
+  return digits.slice(-10);
+}
 
-    if (digits.length === 10) {
-      return `91${digits}`;
-    }
-
-    return `91${digits.slice(-10)}`;
-  }
-
-  getLocalNumber(phone: string) {
-    return phone.slice(-10);
-  }
+getLocalNumber(phone: string): string {
+  return phone;
+}
 
   // SEND OTP
   async sendOtp(mobile: string) {
