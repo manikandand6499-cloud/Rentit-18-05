@@ -2,10 +2,8 @@ import {
   Injectable,
   UnauthorizedException,
 } from "@nestjs/common";
-
 import { PrismaService } from "../prisma/prisma.service";
 import { JwtService } from "@nestjs/jwt";
-
 import axios from "axios";
 
 @Injectable()
@@ -15,62 +13,99 @@ export class AuthService {
     private jwtService: JwtService,
   ) {}
 
-  /// NORMALIZE PHONE
   normalizePhone(phone: string) {
-    return phone.replace(/\D/g, "").trim();
-  }
+    const digits = phone.replace(/\D/g, "");
 
-  /// SEND OTP
-  async sendOtp(mobile: string) {
-    mobile = this.normalizePhone(mobile);
-
-    console.log("📤 Sending OTP:", mobile);
-
-    const response = await axios.get(
-      `https://2factor.in/API/V1/${process.env.API_KEY}/SMS/+91${mobile}/AUTOGEN`
-    );
-
-    console.log("2Factor:", response.data);
-
-    if (response.data.Status !== "Success") {
-      throw new UnauthorizedException(
-        "Failed to send OTP"
-      );
+    if (digits.length === 12 && digits.startsWith("91")) {
+      return digits;
     }
 
-    const sessionId = response.data.Details;
+    if (digits.length === 10) {
+      return `91${digits}`;
+    }
 
-    // DELETE OLD SESSION
-    await this.prisma.otpSession.deleteMany({
-      where: {
-        mobile,
-      },
-    });
-
-    // SAVE SESSION
-    await this.prisma.otpSession.create({
-      data: {
-        mobile,
-        sessionId,
-      },
-    });
-
-    return {
-      success: true,
-      message: "OTP sent successfully",
-    };
+    return `91${digits.slice(-10)}`;
   }
 
-  /// VERIFY OTP
+  getLocalNumber(phone: string) {
+    return phone.slice(-10);
+  }
+
+  // SEND OTP
+  async sendOtp(mobile: string) {
+    const phone = this.normalizePhone(mobile);
+    const localNumber = this.getLocalNumber(phone);
+
+    try {
+      const response = await axios.post(
+        "https://www.fast2sms.com/dev/otp/send",
+        {
+          mobile: localNumber,
+          otp_id: process.env.FAST2SMS_OTP_ID,
+        },
+        {
+          headers: {
+            authorization:
+              process.env.FAST2SMS_API_KEY,
+            "Content-Type":
+              "application/json",
+            accept: "application/json",
+          },
+        },
+      );
+
+      console.log(
+        "FAST2SMS SEND:",
+        response.data,
+      );
+
+      if (!response.data.request_id) {
+        throw new UnauthorizedException(
+          "OTP send failed",
+        );
+      }
+
+      const requestId =
+        response.data.request_id;
+
+      await this.prisma.otpSession.deleteMany({
+        where: { mobile: phone },
+      });
+
+      await this.prisma.otpSession.create({
+        data: {
+          mobile: phone,
+          sessionId: requestId,
+        },
+      });
+
+      return {
+        success: true,
+        requestId,
+      };
+    } catch (e: any) {
+      console.log(
+        e.response?.data || e.message,
+      );
+
+      throw new UnauthorizedException(
+        "Failed to send OTP",
+      );
+    }
+  }
+
+  // VERIFY OTP
   async verifyOtp(
     mobile: string,
     otp: string,
   ) {
-    mobile = this.normalizePhone(mobile);
+    const phone = this.normalizePhone(mobile);
+    const localNumber =
+      this.getLocalNumber(phone);
 
     const session =
       await this.prisma.otpSession.findFirst({
-        where: { mobile },
+        where: { mobile: phone },
         orderBy: {
           createdAt: "desc",
         },
@@ -78,61 +113,79 @@ export class AuthService {
 
     if (!session) {
       throw new UnauthorizedException(
-        "OTP session expired",
+        "OTP session not found",
       );
     }
 
-    console.log(
-      "📲 Verifying:",
-      session.sessionId,
-    );
-
-    const response = await axios.get(
-      `https://2factor.in/API/V1/${process.env.API_KEY}/SMS/VERIFY/${session.sessionId}/${otp}`
-    );
-
-    console.log(response.data);
-
-    if (response.data.Status !== "Success") {
-      throw new UnauthorizedException(
-        "Invalid OTP",
+    try {
+      const response = await axios.post(
+        "https://www.fast2sms.com/dev/otp/verify",
+        {
+          mobile: localNumber,
+          otp,
+          otp_id: process.env.FAST2SMS_OTP_ID,
+        },
+        {
+          headers: {
+            authorization:
+              process.env.FAST2SMS_API_KEY,
+            "Content-Type":
+              "application/json",
+            accept: "application/json",
+          },
+        },
       );
-    }
 
-    // DELETE OTP SESSION
-    await this.prisma.otpSession.deleteMany({
-      where: {
-        mobile,
-      },
-    });
+      console.log(
+        "FAST2SMS VERIFY:",
+        response.data,
+      );
 
-    // CHECK USER
-    let user =
-      await this.prisma.user.findUnique({
+     if (response.data.return !== true) {
+  throw new UnauthorizedException(
+    response.data.message || "Invalid OTP",
+  );
+}
+
+      await this.prisma.otpSession.deleteMany({
         where: {
-          mobile,
+          mobile: phone,
         },
       });
 
-    // CREATE USER
-    if (!user) {
-      user = await this.prisma.user.create({
-        data: {
-          mobile,
-        },
+      let user =
+        await this.prisma.user.findUnique({
+          where: {
+            mobile: phone,
+          },
+        });
+
+      if (!user) {
+        user = await this.prisma.user.create({
+          data: {
+            mobile: phone,
+          },
+        });
+      }
+
+      const token = this.jwtService.sign({
+        userId: user.id,
+        mobile: user.mobile,
       });
+
+      return {
+        success: true,
+        token,
+        user,
+      };
+    } catch (e: any) {
+      console.log(
+        e.response?.data || e.message,
+      );
+
+      throw new UnauthorizedException(
+        "OTP verification failed",
+      );
     }
-
-    // JWT TOKEN
-    const token = this.jwtService.sign({
-      userId: user.id,
-      mobile: user.mobile,
-    });
-
-    return {
-      success: true,
-      token,
-      user,
-    };
   }
-} 
+}
