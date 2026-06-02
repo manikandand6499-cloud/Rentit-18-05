@@ -1,61 +1,65 @@
 // user.service.ts
-import { Injectable, NotFoundException } from '@nestjs/common';
+
+import {
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { UpdateUserLocationDto } from 'src/user/dto/location.dto';
+import { UpdateUserLocationDto } from './dto/location.dto';
 
 @Injectable()
 export class UserService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+  ) {}
 
-  // 👉 ✅ UPDATE LOCATION (FIXED)
-async updateLocation(userId: number, dto: UpdateUserLocationDto) {
-  const user = await this.prisma.user.findUnique({
-    where: { id: userId }
-  });
+  // ─────────────────────────────────────────
+  // GET CURRENT USER
+  // ─────────────────────────────────────────
+  async getUser(userId: number) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        mobile: true,
+        isProfileComplete: true,
+        city: true,
+        area: true,
+        locality: true,
+        latitude: true,
+        longitude: true,
+      },
+    });
 
-  if (!user) {
-    throw new Error('User not found');
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    console.log('🔥 USER FROM DB:', user);
+
+    return user;
   }
 
-  return this.prisma.user.update({
-    where: { id: userId },
-    data: {
-      latitude: dto.latitude,
-      longitude: dto.longitude,
-      city: dto.city,
-      locality: dto.locality,
-      area: dto.area
-    }
-  });
-}
-  // 👉 Get current user
-async getUser(userId: number) {
-  const user = await this.prisma.user.findUnique({
-    where: { id: userId },
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      mobile: true,
-      isProfileComplete: true,
-      city: true,        // 🔥 MUST
-      area: true,
-      locality: true,
-      latitude: true,
-      longitude: true,
-    },
-  });
-
-  console.log("🔥 USER FROM DB:", user); // debug
-
-  return user;
-}
-
-  // 👉 Complete profile (name + email)
+  // ─────────────────────────────────────────
+  // COMPLETE PROFILE
+  // ─────────────────────────────────────────
   async completeProfile(
     userId: number,
-    data: { name: string; email: string },
+    data: {
+      name: string;
+      email: string;
+    },
   ) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
     return this.prisma.user.update({
       where: { id: userId },
       data: {
@@ -64,5 +68,46 @@ async getUser(userId: number) {
         isProfileComplete: true,
       },
     });
+  }
+
+  // ─────────────────────────────────────────
+  // UPDATE LOCATION
+  // ─────────────────────────────────────────
+  async updateLocation(
+    userId: number,
+    dto: UpdateUserLocationDto,
+  ) {
+    console.log('🔥 LOCATION DTO:', dto);
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const updatedUser =
+      await this.prisma.user.update({
+        where: { id: userId },
+        data: {
+          latitude: dto.latitude,
+          longitude: dto.longitude,
+          city: dto.city ?? null,
+          locality: dto.locality ?? null,
+          area: dto.area ?? null,
+        },
+      });
+
+    console.log(
+      '✅ LOCATION SAVED:',
+      updatedUser,
+    );
+
+    return {
+      success: true,
+      message: 'Location updated successfully',
+      data: updatedUser,
+    };
   }
 }
