@@ -5,26 +5,34 @@ import {
 } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { CreateVisitDto } from "./dto/create-visit.dto";
+import { NotificationService } from "src/notification/notification.service";
 
 // Shared shape returned by all property lookups
 interface PropertyAvailability {
   availableFrom?: Date | string | null;
 }
 
+interface PropertyOwner {
+  ownerId: number | null;
+  label: string; // city + locality fallback — safe across all models
+}
+
 @Injectable()
 export class VisitService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private notificationService: NotificationService,
+  ) {}
 
   // ─────────────────────────────────────────────────────────────────
   // PRIVATE HELPERS
   // ─────────────────────────────────────────────────────────────────
 
   /**
-   * Converts "5:30 PM" / "09:00 AM" / "17:30" → "05:30" / "09:00" / "17:30"
+   * Converts "5:30 PM" / "09:00 AM" / "17:30" → "17:30" / "09:00" / "17:30"
    */
   private convertTo24Hour(time: string): string {
     time = time.trim().replace(/\s+/g, " ");
-
     const upper = time.toUpperCase();
 
     // Already 24-hour — no AM/PM suffix
@@ -46,11 +54,11 @@ export class VisitService {
 
   /**
    * Validates selected date is within [today or availableFrom, start + 15 days].
-   * Accepts both Date and string for availableFrom (Apartment/Commercial store it as string).
+   * Accepts both Date and string for availableFrom.
    */
   private validateDateRange(
     selectedDate: Date,
-    availableFrom: Date | string | null
+    availableFrom: Date | string | null,
   ): void {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -68,7 +76,7 @@ export class VisitService {
 
     if (sel < start || sel > end) {
       throw new BadRequestException(
-        "Date must be within the available range (next 15 days)"
+        "Date must be within the available range (next 15 days)",
       );
     }
   }
@@ -99,7 +107,6 @@ export class VisitService {
 
   /**
    * Resolves the property across all four types and returns { availableFrom }.
-   * Uses the correct Prisma accessor names from schema.prisma.
    *
    * Schema model → Prisma accessor:
    *   PGDetails   → this.prisma.pGDetails
@@ -109,7 +116,7 @@ export class VisitService {
    */
   private async resolveProperty(
     propertyType: string | null | undefined,
-    propertyId: number
+    propertyId: number,
   ): Promise<PropertyAvailability | null> {
     const type = (propertyType ?? "").toLowerCase().trim();
 
@@ -142,12 +149,68 @@ export class VisitService {
   }
 
   /**
+   * Resolves the property owner (userId) and a display label for notifications.
+   * Uses city + locality since propertyName does NOT exist on Flatmate /
+   * Commercial / Apartment models — only userId is selected from those.
+   * PGDetails uses pgName if available, falls back to city.
+   */
+  private async resolvePropertyOwner(
+    propertyType: string | null | undefined,
+    propertyId: number,
+  ): Promise<PropertyOwner> {
+    const type = (propertyType ?? "").toLowerCase().trim();
+
+    if (type.includes("flatmate")) {
+      const record = await this.prisma.flatmate.findUnique({
+        where: { id: propertyId },
+        select: { userId: true, city: true, locality: true },
+      });
+      return {
+        ownerId: record?.userId ?? null,
+        label: [record?.city, record?.locality].filter(Boolean).join(", ") || "Flatmate Property",
+      };
+    }
+
+    if (type.includes("commercial")) {
+      const record = await this.prisma.commercial.findUnique({
+        where: { id: propertyId },
+        select: { userId: true, city: true, locality: true },
+      });
+      return {
+        ownerId: record?.userId ?? null,
+        label: [record?.city, record?.locality].filter(Boolean).join(", ") || "Commercial Property",
+      };
+    }
+
+    if (type.includes("apartment")) {
+      const record = await this.prisma.apartment.findUnique({
+        where: { id: propertyId },
+        select: { userId: true, city: true, locality: true },
+      });
+      return {
+        ownerId: record?.userId ?? null,
+        label: [record?.city, record?.locality].filter(Boolean).join(", ") || "Apartment",
+      };
+    }
+
+    // Default: PG / Hostel
+    const record = await this.prisma.pGDetails.findUnique({
+      where: { id: propertyId },
+      select: { userId: true, city: true, locality: true },
+    });
+    return {
+      ownerId: record?.userId ?? null,
+      label: [record?.city, record?.locality].filter(Boolean).join(", ") || "PG / Hostel",
+    };
+  }
+
+  /**
    * Auto-expires past pending/confirmed/calling visits so they don't
    * block new bookings for the same property.
    */
   private async expirePastVisits(
     userId: number,
-    propertyId: number
+    propertyId: number,
   ): Promise<void> {
     const now = new Date();
 
@@ -212,7 +275,7 @@ export class VisitService {
 
     if (activeVisit) {
       throw new BadRequestException(
-        "You already have an active visit for this property. Cancel or complete it first."
+        "You already have an active visit for this property. Cancel or complete it first.",
       );
     }
 
@@ -227,12 +290,12 @@ export class VisitService {
 
     if (slotTaken) {
       throw new BadRequestException(
-        "This time slot is already booked. Please choose another."
+        "This time slot is already booked. Please choose another.",
       );
     }
 
-    // ── Create ─────────────────────────────────────────────────────
-    return this.prisma.visit.create({
+    // ── Create visit ───────────────────────────────────────────────
+    const visit = await this.prisma.visit.create({
       data: {
         userId,
         propertyId,
@@ -245,6 +308,26 @@ export class VisitService {
         language: "en",
       },
     });
+
+    // ── Notify property owner ──────────────────────────────────────
+    const { ownerId, label } = await this.resolvePropertyOwner(
+      propertyType,
+      propertyId,
+    );
+
+    if (ownerId !== null && ownerId !== userId) {
+      await this.notificationService.send({
+        recipientId: ownerId,
+        title: "📅 New Visit Booking",
+        body: `A tenant has booked a visit for your property (${label}) on ${date} at ${time24}.`,
+        category: "booking",
+      });
+
+      console.log(`✅ Owner notification sent → ownerId: ${ownerId}`);
+    }
+
+    // ── Return created visit ───────────────────────────────────────
+    return visit;
   }
 
   // ─────────────────────────────────────────────────────────────────
@@ -255,7 +338,7 @@ export class VisitService {
     visitId: number,
     userId: number,
     date: string,
-    time: string
+    time: string,
   ) {
     if (!date || !time) {
       throw new BadRequestException("date and time are required");
@@ -272,7 +355,7 @@ export class VisitService {
 
     if (existing.userId !== userId) {
       throw new BadRequestException(
-        "You are not authorized to reschedule this visit"
+        "You are not authorized to reschedule this visit",
       );
     }
 
@@ -287,7 +370,7 @@ export class VisitService {
     // ── Resolve property for date-range validation ─────────────────
     const property = await this.resolveProperty(
       existing.propertyType,
-      existing.propertyId
+      existing.propertyId,
     );
 
     // ── Date range validation ──────────────────────────────────────
@@ -313,7 +396,7 @@ export class VisitService {
 
     if (slotTaken) {
       throw new BadRequestException(
-        "This time slot is already booked. Please choose another."
+        "This time slot is already booked. Please choose another.",
       );
     }
 
@@ -380,18 +463,40 @@ export class VisitService {
     });
   }
 
+  // ─────────────────────────────────────────────────────────────────
+  // GET VISITS FOR OWNER
+  // ─────────────────────────────────────────────────────────────────
+
   async getVisitsForOwner(ownerId: number) {
-  return this.prisma.visit.findMany({
+    return this.prisma.visit.findMany({
+      where: {
+        property: {
+          userId: ownerId, // visits on properties this owner listed
+        },
+      },
+      include: {
+        property: true,
+        user: true, // the tenant who booked
+      },
+      orderBy: { visitDateTime: "desc" },
+    });
+  }
+
+  async getVisitForProperty(
+  userId: number,
+  propertyId: number,
+) {
+  return this.prisma.visit.findFirst({
     where: {
-      property: {
-        userId: ownerId,   // visits on properties this owner listed
+      userId,
+      propertyId,
+      status: {
+        in: ["pending", "confirmed", "calling"],
       },
     },
-    include: {
-      property: true,
-      user: true,          // the tenant who booked
+    orderBy: {
+      createdAt: "desc",
     },
-    orderBy: { visitDateTime: 'desc' },
   });
 }
 }

@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   ForbiddenException,
+  BadRequestException,
 } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { CreateCommercialDto } from "./dto/create-commercial.dto";
@@ -107,14 +108,33 @@ export class CommercialService {
   // ──────────────────────────────────────────────
   // FIND ALL  (published listings only)
   // ──────────────────────────────────────────────
+async findAll() {
+  const data = await this.prisma.commercial.findMany({
+    where: {
+      isDraft: false,
+      OR: [
+        { isSoldOut: false },
+        { isSoldOut: null },
+      ],
+    },
+    orderBy: {
+      createdAt: "desc",
+    },
+    include: {
+      user: true,
+    },
+  });
 
-  async findAll() {
-    return this.prisma.commercial.findMany({
-      where: { isDraft: false },
-      orderBy: { createdAt: "desc" },
-      include: { user: true },
-    });
-  }
+  console.log(
+    "COMMERCIAL LIST =>",
+    data.map(x => ({
+      id: x.id,
+      isSoldOut: x.isSoldOut,
+    })),
+  );
+
+  return data;
+}
 
   // ──────────────────────────────────────────────
   // FIND ONE
@@ -302,4 +322,41 @@ export class CommercialService {
       where: { id },
     });
   }
+
+async markSoldOut(
+  commercialId: number,
+  userId: number,
+  reason: string,
+) {
+  console.log("COMMERCIAL ID =>", commercialId);
+  console.log("USER ID =>", userId);
+
+  const property =
+    await this.prisma.commercial.findFirst({
+      where: {
+        id: commercialId,
+        userId,
+      },
+    });
+
+console.log("DB PROPERTY =>", property);
+console.log("REQUEST USER =>", userId);
+
+  if (!property) {
+    throw new BadRequestException(
+      "Commercial property not found",
+    );
+  }
+
+  return this.prisma.commercial.update({
+    where: {
+      id: commercialId,
+    },
+    data: {
+      isSoldOut: true,
+      soldOutReason: reason,
+      soldOutAt: new Date(),
+    },
+  });
+}
 }

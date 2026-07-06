@@ -243,5 +243,22 @@ updateAvailability(
     dto,
   );
 }
+
+@Put(':id/soldout')
+markSoldOut(
+  @Param('id', ParseIntPipe) id: number,
+  @Req() req,
+  @Body() body: { reason: string },
+) {
+  console.log('PROPERTY ID =>', id);
+  console.log('USER =>', req.user);
+  console.log('BODY =>', body);
+
+  return this.propertyService.markSoldOut(
+    id,
+    req.user.userId,
+    body.reason,
+  );
+}
   
 }

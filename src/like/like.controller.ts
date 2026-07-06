@@ -1,5 +1,3 @@
-// like.controller.ts
-
 import {
   Controller,
   Post,
@@ -11,9 +9,12 @@ import {
   Query,
   createParamDecorator,
   ExecutionContext,
+  BadRequestException,
 } from '@nestjs/common';
+
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { LikeService } from './like.service';
+import type { LikeType } from './like.service';
 
 const GetUser = createParamDecorator(
   (_data: unknown, ctx: ExecutionContext) => {
@@ -29,28 +30,48 @@ export class LikeController {
 
   @Post(':propertyId')
   toggleLike(
-    @Param('propertyId', ParseIntPipe) propertyId: number,
-    @Query('type') type: 'pg' | 'flatmate' = 'pg',
-    @GetUser() user: any,
+    @Param('propertyId', ParseIntPipe)
+    propertyId: number,
+
+    @Query('type')
+    type: LikeType = 'pg',
+
+    @GetUser()
+    user: any,
   ) {
     const userId = user?.userId ?? user?.id;
-    return this.likeService.toggleLike(userId, propertyId, type);
+
+    if (!userId) {
+      throw new BadRequestException(
+        'User ID not found',
+      );
+    }
+
+    return this.likeService.toggleLike(
+      userId,
+      propertyId,
+      type,
+    );
   }
 
   @Get('my')
-  async getMyLikes(@Req() req: any) {
-    const userId = req.user?.userId ?? req.user?.id;
+  getMyLikes(@Req() req: any) {
+    const userId =
+      req.user?.userId ??
+      req.user?.id;
 
-    if (!userId) {
-      throw new Error('User ID not found in JWT token');
-    }
-
-    return this.likeService.getMyLikes(userId);
+    return this.likeService.getMyLikes(
+      userId,
+    );
   }
-  @Get(":userId")
-getUserLikes(
-  @Param("userId", ParseIntPipe) userId: number,
-) {
-  return this.likeService.getMyLikes(userId);
-}
+
+  @Get(':userId')
+  getUserLikes(
+    @Param('userId', ParseIntPipe)
+    userId: number,
+  ) {
+    return this.likeService.getMyLikes(
+      userId,
+    );
+  }
 }

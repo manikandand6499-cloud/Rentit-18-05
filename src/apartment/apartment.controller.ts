@@ -1,17 +1,20 @@
+// apartment.controller.ts
+
 import {
-  BadRequestException,
-  Body,
   Controller,
   Get,
-  Param,
-  ParseIntPipe,
   Post,
   Put,
+  Delete,
+  Body,
+  Param,
   Req,
-  UploadedFile,
-  UploadedFiles,
+  ParseIntPipe,
   UseGuards,
+  BadRequestException,
   UseInterceptors,
+  UploadedFiles,
+  UploadedFile,
 } from '@nestjs/common';
 import {
   FileInterceptor,
@@ -37,29 +40,26 @@ export class ApartmentController {
   // =========================================================
   // CREATE APARTMENT
   // =========================================================
-@UseGuards(JwtAuthGuard)
-@Post()
-create(
-  @Body() dto: CreateApartmentDto,
-  @Req() req,
-) {
-  console.log('REQ USER =>', req.user);
+  @UseGuards(JwtAuthGuard)
+  @Post()
+  create(
+    @Body() dto: CreateApartmentDto,
+    @Req() req,
+  ) {
+    console.log('REQ USER =>', req.user);
 
-  if (!req.user) {
-    throw new BadRequestException('User not found in request');
+    if (!req.user) {
+      throw new BadRequestException('User not found in request');
+    }
+
+    return this.apartmentService.createApartment(dto, req.user.id);
   }
 
-  return this.apartmentService.createApartment(
-    dto,
-    req.user.id,
-  );
-}
-
-@UseGuards(JwtAuthGuard)
-@Get('my')
-getMyApartments(@Req() req) {
-  return this.apartmentService.getMyApartments(req.user.id);
-}
+  @UseGuards(JwtAuthGuard)
+  @Get('my')
+  getMyApartments(@Req() req) {
+    return this.apartmentService.getMyApartments(req.user.id);
+  }
 
   // =========================================================
   // GET ALL APARTMENTS
@@ -83,20 +83,19 @@ getMyApartments(@Req() req) {
   // =========================================================
   // UPDATE APARTMENT
   // =========================================================
-@UseGuards(JwtAuthGuard)
-@Put(':id')
-update(
-  @Param('id', ParseIntPipe) id: number,
-  @Body() dto: UpdateApartmentDto,
-  @Req() req,
-) {
-  // 🔍 Check what req.user actually contains
-  console.log('REQ USER =>', req.user);
-  console.log('REQ USER ID =>', req.user?.id);   // must be 1, not undefined
-  console.log('APARTMENT ID =>', id);             // must be 4
+  @UseGuards(JwtAuthGuard)
+  @Put(':id')
+  update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateApartmentDto,
+    @Req() req,
+  ) {
+    console.log('REQ USER =>', req.user);
+    console.log('REQ USER ID =>', req.user?.id);
+    console.log('APARTMENT ID =>', id);
 
-  return this.apartmentService.updateApartment(id, dto, req.user.id);
-}
+    return this.apartmentService.updateApartment(id, dto, req.user.id);
+  }
 
   // =========================================================
   // ADDITIONAL DETAILS
@@ -104,19 +103,11 @@ update(
   @UseGuards(JwtAuthGuard)
   @Put(':id/additional-details')
   additionalDetails(
-    @Param('id', ParseIntPipe)
-    id: number,
-
-    @Body()
-    dto: AdditionalDetailsDto,
-
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: AdditionalDetailsDto,
     @Req() req,
   ) {
-    return this.apartmentService.additionalDetails(
-      id,
-      dto,
-      req.user.id,
-    );
+    return this.apartmentService.additionalDetails(id, dto, req.user.id);
   }
 
   // =========================================================
@@ -126,15 +117,9 @@ update(
   @Post(':id/upload-images')
   @UseInterceptors(FilesInterceptor('files'))
   async uploadImages(
-    @Param('id', ParseIntPipe)
-    id: number,
-
-    @UploadedFiles()
-    files: Express.Multer.File[],
-
-    @Body('existingImages')
-    existingImages: string,
-
+    @Param('id', ParseIntPipe) id: number,
+    @UploadedFiles() files: Express.Multer.File[],
+    @Body('existingImages') existingImages: string,
     @Req() req,
   ) {
     const oldImages: string[] = existingImages
@@ -170,27 +155,17 @@ update(
     }),
   )
   async uploadVideo(
-    @Param('id', ParseIntPipe)
-    id: number,
-
-    @UploadedFile()
-    file: Express.Multer.File,
-
+    @Param('id', ParseIntPipe) id: number,
+    @UploadedFile() file: Express.Multer.File,
     @Req() req,
   ) {
     if (!file) {
-      throw new BadRequestException(
-        'No video file uploaded',
-      );
+      throw new BadRequestException('No video file uploaded');
     }
 
     const url = await uploadToR2(file);
 
-    return this.apartmentService.saveVideo(
-      id,
-      req.user.id,
-      url,
-    );
+    return this.apartmentService.saveVideo(id, req.user.id, url);
   }
 
   // =========================================================
@@ -199,27 +174,36 @@ update(
   @UseGuards(JwtAuthGuard)
   @Put(':id/availability')
   saveAvailability(
-    @Param('id', ParseIntPipe)
-    id: number,
-
-    @Body()
-    dto: ApartmentDto,
-
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: ApartmentDto,
     @Req() req,
   ) {
-    return this.apartmentService.saveAvailability(
-      id,
-      req.user.id,
-      dto,
-    );
+    return this.apartmentService.saveAvailability(id, req.user.id, dto);
   }
 
+  // =========================================================
+  // VIEW COUNT — AUTH REQUIRED, one view per user per property
+  // =========================================================
+  @UseGuards(JwtAuthGuard)
+  @Post(':id/view')
+  recordView(
+    @Param('id', ParseIntPipe) id: number,
+    @Req() req,
+  ) {
+    return this.apartmentService.recordUniqueView(id, req.user.id);
+  }
 
-  // VIEW COUNT INCREMENT
-@Post(':id/view')
-incrementView(
+@UseGuards(JwtAuthGuard)
+@Put(':id/soldout')
+markSoldOut(
   @Param('id', ParseIntPipe) id: number,
+  @Req() req,
+  @Body() body: { reason: string },
 ) {
-  return this.apartmentService.incrementViewCount(id);
+  return this.apartmentService.markSoldOut(
+    id,
+    req.user.id,   // ← was req.user.userId
+    body.reason,
+  );
 }
 }
