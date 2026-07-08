@@ -7,7 +7,9 @@ import { PrismaService } from '../prisma/prisma.service';
 
 export type LikeType =
   | 'pg'
-  | 'flatmate';
+  | 'flatmate'
+  | 'apartment'
+  | 'commercial';
 
 @Injectable()
 export class LikeService {
@@ -70,6 +72,103 @@ export class LikeService {
       };
     }
 
+    if (type === 'apartment') {
+      const apartment =
+        await this.prisma.apartment.findUnique({
+          where: {
+            id: propertyId,
+          },
+        });
+
+      if (!apartment) {
+        throw new NotFoundException(
+          `Apartment ${propertyId} not found`,
+        );
+      }
+
+      const existing =
+        await this.prisma.like.findFirst({
+          where: {
+            userId,
+            apartmentId: propertyId,
+          },
+        });
+
+      if (existing) {
+        await this.prisma.like.delete({
+          where: {
+            id: existing.id,
+          },
+        });
+
+        return {
+          success: true,
+          liked: false,
+        };
+      }
+
+      await this.prisma.like.create({
+        data: {
+          userId,
+          apartmentId: propertyId,
+        },
+      });
+
+      return {
+        success: true,
+        liked: true,
+      };
+    }
+
+    if (type === 'commercial') {
+      const commercial =
+        await this.prisma.commercial.findUnique({
+          where: {
+            id: propertyId,
+          },
+        });
+
+      if (!commercial) {
+        throw new NotFoundException(
+          `Commercial ${propertyId} not found`,
+        );
+      }
+
+      const existing =
+        await this.prisma.like.findFirst({
+          where: {
+            userId,
+            commercialId: propertyId,
+          },
+        });
+
+      if (existing) {
+        await this.prisma.like.delete({
+          where: {
+            id: existing.id,
+          },
+        });
+
+        return {
+          success: true,
+          liked: false,
+        };
+      }
+
+      await this.prisma.like.create({
+        data: {
+          userId,
+          commercialId: propertyId,
+        },
+      });
+
+      return {
+        success: true,
+        liked: true,
+      };
+    }
+
+    // Default to PG ('pg')
     const property =
       await this.prisma.pGDetails.findUnique({
         where: {
@@ -120,7 +219,7 @@ export class LikeService {
   }
 
   async getMyLikes(userId: number) {
-    return this.prisma.like.findMany({
+    const likes = await this.prisma.like.findMany({
       where: {
         userId,
       },
@@ -128,11 +227,21 @@ export class LikeService {
       include: {
         property: true,
         flatmate: true,
+        Apartment: true,
+        Commercial: true,
       },
 
-     orderBy: {
-  id: 'desc',
-},
+      orderBy: {
+        id: 'desc',
+      },
+    });
+
+    return likes.map((like: any) => {
+      return {
+        ...like,
+        apartment: like.Apartment || null,
+        commercial: like.Commercial || null,
+      };
     });
   }
 }

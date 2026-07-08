@@ -112,9 +112,7 @@ model Like {
   flatmateId   Int?
   apartmentId  Int?
   commercialId Int?
-
   createdAt    DateTime    @default(now())
-
   Apartment    Apartment?  @relation(fields: [apartmentId], references: [id])
   Commercial   Commercial? @relation(fields: [commercialId], references: [id])
   flatmate     Flatmate?   @relation(fields: [flatmateId], references: [id])
