@@ -25,10 +25,25 @@ model User {
   likes             Like[]
   receivedMessages  Message[]        @relation("Receiver")
   sentMessages      Message[]        @relation("Sender")
+  notifications     Notification[]
   properties        PGDetails[]
+  propertyViews     PropertyView[]
   subscriptions     Subscription[]
   UserPreference    UserPreference[]
   visits            Visit[]
+}
+
+model Notification {
+  id          Int      @id @default(autoincrement())
+  recipientId Int
+  title       String
+  body        String
+  category    String   @default("booking")
+  isRead      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  recipient   User     @relation(fields: [recipientId], references: [id])
+
+  @@index([recipientId])
 }
 
 model Subscription {
@@ -54,12 +69,11 @@ model Otp {
   createdAt DateTime @default(now())
 }
 
-
 model OtpSession {
-  id         String   @id @default(uuid())
-  mobile     String
-  sessionId  String
-  createdAt  DateTime @default(now())
+  id        String   @id @default(uuid())
+  mobile    String
+  sessionId String
+  createdAt DateTime @default(now())
 
   @@index([mobile])
   @@index([createdAt])
@@ -92,14 +106,20 @@ model UserPreference {
 }
 
 model Like {
-  id         Int        @id @default(autoincrement())
-  userId     Int
-  propertyId Int?
-  createdAt  DateTime   @default(now())
-  flatmateId Int?
-  flatmate   Flatmate?  @relation(fields: [flatmateId], references: [id])
-  property   PGDetails? @relation(fields: [propertyId], references: [id])
-  user       User       @relation(fields: [userId], references: [id])
+  id           Int         @id @default(autoincrement())
+  userId       Int
+  propertyId   Int?
+  flatmateId   Int?
+  apartmentId  Int?
+  commercialId Int?
+
+  createdAt    DateTime    @default(now())
+
+  Apartment    Apartment?  @relation(fields: [apartmentId], references: [id])
+  Commercial   Commercial? @relation(fields: [commercialId], references: [id])
+  flatmate     Flatmate?   @relation(fields: [flatmateId], references: [id])
+  property     PGDetails?  @relation(fields: [propertyId], references: [id])
+  user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, propertyId])
   @@unique([userId, flatmateId])
@@ -165,6 +185,9 @@ model PGDetails {
   availableAllDay     Boolean?
   endTime             String?
   startTime           String?
+  isSoldOut           Boolean?  @default(false)
+  soldOutAt           DateTime?
+  soldOutReason       String?
   likes               Like[]
   messages            Message[] @relation("PropertyMessages")
   user                User      @relation(fields: [userId], references: [id])
@@ -174,7 +197,7 @@ model PGDetails {
 }
 
 model Commercial {
-  id                      Int      @id @default(autoincrement())
+  id                      Int       @id @default(autoincrement())
   userId                  Int
   city                    String
   locality                String?
@@ -213,14 +236,18 @@ model Commercial {
   startTime               String?
   endTime                 String?
   availableAllDay         Boolean?
-  currentStep             Int      @default(1)
-  isDraft                 Boolean  @default(true)
-  createdAt               DateTime @default(now())
+  currentStep             Int       @default(1)
+  isDraft                 Boolean   @default(true)
+  createdAt               DateTime  @default(now())
   commercialPropertyType  String?
   commercialOtherFeatures Json?
   slots                   String?
-  viewscount              Int      @default(0)
-  user                    User     @relation(fields: [userId], references: [id])
+  viewscount              Int       @default(0)
+  isSoldOut               Boolean?  @default(false)
+  soldOutAt               DateTime?
+  soldOutReason           String?
+  user                    User      @relation(fields: [userId], references: [id])
+  likes                   Like[]
 }
 
 model Message {
@@ -294,12 +321,15 @@ model Flatmate {
   startTime            String?
   video                String?
   viewscount           Int       @default(0)
+  isSoldOut            Boolean?  @default(false)
+  soldOutAt            DateTime?
+  soldOutReason        String?
   user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  Like                 Like[]
+  likes                Like[]
 }
 
 model Apartment {
-  id                       Int      @id @default(autoincrement())
+  id                       Int            @id @default(autoincrement())
   userId                   Int
   city                     String
   locality                 String
@@ -314,8 +344,8 @@ model Apartment {
   builtUpArea              Int?
   propertyAge              String?
   facing                   String?
-  createdAt                DateTime @default(now())
-  updatedAt                DateTime @updatedAt
+  createdAt                DateTime       @default(now())
+  updatedAt                DateTime       @updatedAt
   propertyType2            String?
   otherFeatures            Json?
   furnishing               String?
@@ -344,13 +374,30 @@ model Apartment {
   unitsPropertiesAvailable Boolean?
   waterSupply              Json?
   availabilityDay          Json?
-  images                   String[] @default([])
+  images                   String[]       @default([])
   video                    String?
   availableAllDay          Boolean?
   endTime                  String?
   startTime                String?
-  viewscount               Int      @default(0)
-  user                     User     @relation(fields: [userId], references: [id])
+  viewscount               Int            @default(0)
+  isSoldOut                Boolean?       @default(false)
+  soldOutAt                DateTime?
+  soldOutReason            String?
+  user                     User           @relation(fields: [userId], references: [id])
+  likes                    Like[]
+  propertyViews            PropertyView[]
+}
+
+model PropertyView {
+  id         Int       @id @default(autoincrement())
+  userId     Int
+  propertyId Int
+  createdAt  DateTime  @default(now())
+  apartment  Apartment @relation(fields: [propertyId], references: [id])
+  user       User      @relation(fields: [userId], references: [id])
+
+  @@unique([userId, propertyId])
+  @@index([propertyId])
 }
 
 enum VisitStatus {

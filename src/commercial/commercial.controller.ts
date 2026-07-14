@@ -157,4 +157,18 @@ async uploadImages(
 incrementViews(@Param("id", ParseIntPipe) id: number) {
   return this.commercialService.incrementViews(id);
 }
+
+@UseGuards(JwtAuthGuard)
+@Put(':id/soldout')
+markSoldOut(
+  @Param('id', ParseIntPipe) id: number,
+  @Req() req,
+  @Body() body: { reason: string },
+) {
+  return this.commercialService.markSoldOut(
+    id,
+    req.user.userId,
+    body.reason,
+  );
+}
 }

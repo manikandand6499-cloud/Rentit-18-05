@@ -56,6 +56,17 @@ export class FlatmateController {
   }
 
   // =========================================================
+  // GET MY LISTINGS — must be declared BEFORE :id to avoid
+  // NestJS treating the literal string "my" as a numeric param
+  // =========================================================
+  @UseGuards(JwtAuthGuard)
+  @Get('my')
+  getMyFlatmates(@Req() req) {
+    const userId = this.resolveUserId(req);
+    return this.flatmateService.getMyFlatmates(userId);
+  }
+
+  // =========================================================
   // CREATE
   // =========================================================
   @UseGuards(JwtAuthGuard)
@@ -201,6 +212,40 @@ export class FlatmateController {
   }
 
   // =========================================================
+  // MARK SOLD OUT — operates on flatmate table via flatmateService
+  // =========================================================
+  @UseGuards(JwtAuthGuard)
+  @Put(':id/soldout')
+  markSoldOut(
+    @Param('id', ParseIntPipe) id: number,
+    @Req() req,
+    @Body() body: { reason: string },
+  ) {
+    const userId = this.resolveUserId(req);
+    return this.flatmateService.markSoldOut(id, userId, body.reason);
+  }
+
+  // =========================================================
+  // GET DETAILS + INCREMENT VIEW
+  // =========================================================
+  @Get(':id/details')
+  getFlatmateDetails(
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return this.flatmateService.getFlatmateAndIncrementView(id);
+  }
+
+  // =========================================================
+  // INCREMENT VIEW COUNT ONLY
+  // =========================================================
+  @Post(':id/view')
+  addView(
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return this.flatmateService.incrementViewCount(id);
+  }
+
+  // =========================================================
   // DELETE
   // =========================================================
   @UseGuards(JwtAuthGuard)
@@ -212,19 +257,4 @@ export class FlatmateController {
     const userId = this.resolveUserId(req);
     return this.flatmateService.deleteFlatmate(id, userId);
   }
-
-  @Get(':id/details')
-getFlatmateDetails(
-  @Param('id', ParseIntPipe) id: number,
-) {
-  return this.flatmateService.getFlatmateAndIncrementView(id);
-}
-
-// ONLY INCREMENT VIEW COUNT
-@Post(':id/view')
-addView(
-  @Param('id', ParseIntPipe) id: number,
-) {
-  return this.flatmateService.incrementViewCount(id);
-}
 }

@@ -188,7 +188,9 @@ async getAllProperties(userId: number, city?: string) {
   return this.prisma.pGDetails.findMany({
     where: {
       isDeleted: false,
+      isSoldOut: false,   // 🔥 ADD THIS
       userId: { not: userId },
+
       ...(city && {
         city: {
           equals: city,
@@ -410,4 +412,40 @@ async updateSchedule(
   });
 }
 
+
+async markSoldOut(
+  propertyId: number,
+  userId: number,
+  reason: string,
+) {
+  console.log('propertyId =>', propertyId);
+  console.log('userId =>', userId);
+  console.log('reason =>', reason);
+
+  const property = await this.prisma.pGDetails.findFirst({
+    where: {
+      id: propertyId,
+      userId,
+    },
+  });
+
+  console.log('property =>', property);
+
+  if (!property) {
+    throw new BadRequestException(
+      'Property not found',
+    );
+  }
+
+  return this.prisma.pGDetails.update({
+    where: {
+      id: propertyId,
+    },
+    data: {
+      isSoldOut: true,
+      soldOutReason: reason,
+      soldOutAt: new Date(),
+    },
+  });
+}
 }

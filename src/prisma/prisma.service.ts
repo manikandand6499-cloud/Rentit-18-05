@@ -7,7 +7,6 @@ export class PrismaService
   implements OnModuleInit {
   property: any;
 
-
   async onModuleInit() {
     await this.$connect();
   }
@@ -15,7 +14,6 @@ export class PrismaService
   async enableShutdownHooks(
     app: INestApplication,
   ) {
-
     process.on(
       'beforeExit',
       async () => {

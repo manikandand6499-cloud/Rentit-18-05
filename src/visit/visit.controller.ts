@@ -106,4 +106,22 @@ getOwnerVisits(@Req() req: any) {
   return this.visitService.getVisitsForOwner(userId);
 }
 
+@Get("property/:propertyId")
+@HttpCode(HttpStatus.OK)
+getVisitForProperty(
+  @Param("propertyId", ParseIntPipe) propertyId: number,
+  @Req() req: any,
+) {
+  const userId: number = req.user?.userId ?? req.user?.id;
+
+  if (!userId) {
+    throw new BadRequestException("User not authenticated");
+  }
+
+  return this.visitService.getVisitForProperty(
+    userId,
+    propertyId,
+  );
+}
+
 }
