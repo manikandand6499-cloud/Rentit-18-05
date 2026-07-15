@@ -1,7 +1,10 @@
 # ── Stage 1: Build ──────────────────────────────────────────────────────────
-FROM node:20-alpine AS builder
+FROM node:20-slim AS builder
 
 WORKDIR /app
+
+# Install openssl (required by Prisma engine)
+RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 
 # Copy package files
 COPY package*.json ./
@@ -12,16 +15,19 @@ RUN npm install
 # Copy source
 COPY . .
 
-# Generate Prisma client
+# Generate Prisma client for debian-openssl target
 RUN npx prisma generate
 
 # Build NestJS app
 RUN npm run build
 
 # ── Stage 2: Production ──────────────────────────────────────────────────────
-FROM node:20-alpine AS production
+FROM node:20-slim AS production
 
 WORKDIR /app
+
+# Install openssl runtime (required by Prisma engine at runtime)
+RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 
 # Copy package files
 COPY package*.json ./
