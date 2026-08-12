@@ -34,6 +34,7 @@ import { UpdateLocationDto } from './dto/location.dto';
 import { uploadToR2 } from 'src/common/s3.upload';
 import { CreateAmenitiesDto } from './dto/create-amenities.dto';
 import { CreateScheduleDto } from './dto/availability.dto';
+import { UpdatePropertyDto } from './dto/update-property.dto';
 
 @Controller('property')
 @UseGuards(JwtAuthGuard)
@@ -258,6 +259,19 @@ markSoldOut(
     id,
     req.user.userId,
     body.reason,
+  );
+}
+
+@Put(':id')
+updateProperty(
+  @Param('id', ParseIntPipe) id: number,
+  @Req() req,
+  @Body() dto: UpdatePropertyDto,
+) {
+  return this.propertyService.updateProperty(
+    id,
+    req.user.userId,
+    dto,
   );
 }
   

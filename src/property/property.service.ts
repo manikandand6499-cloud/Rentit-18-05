@@ -14,6 +14,7 @@ import { CreateAmenitiesDto } from './dto/create-amenities.dto';
 import { CreateContactDto } from './dto/create-contact.dto';
 import { UpdateLocationDto } from './dto/location.dto';
 import { CreateScheduleDto } from './dto/availability.dto';
+import { UpdatePropertyDto } from './dto/update-property.dto';
 
 @Injectable()
 export class PropertyService {
@@ -445,6 +446,53 @@ async markSoldOut(
       isSoldOut: true,
       soldOutReason: reason,
       soldOutAt: new Date(),
+    },
+  });
+}
+
+async updateProperty(id: number, userId: number, data: UpdatePropertyDto) {
+  await this.checkPropertyOwner(id, userId);
+
+  return this.prisma.pGDetails.update({
+    where: { id },
+    data: {
+      ...(data.city && { city: data.city }),
+      ...(data.locality && { locality: data.locality }),
+      ...(data.street && { street: data.street }),
+      ...(data.landmark && { landmark: data.landmark }),
+      ...(data.latitude !== undefined && { latitude: data.latitude }),
+      ...(data.longitude !== undefined && { longitude: data.longitude }),
+      ...(data.propertyName && { propertyName: data.propertyName }),
+      ...(data.propertyType && { propertyType: data.propertyType }),
+      ...(data.roomType && { roomType: data.roomType }),
+      ...(data.foodIncluded !== undefined && { foodIncluded: data.foodIncluded }),
+      ...(data.foodType && { foodType: data.foodType }),
+      ...(data.pgAmenities && { pgAmenities: data.pgAmenities }),
+      ...(data.parking && { parking: data.parking }),
+      ...(data.availableFrom && { availableFrom: new Date(data.availableFrom) }),
+      ...(data.noticePeriod !== undefined && { noticePeriod: data.noticePeriod }),
+      ...(data.gateClosingTime && {
+        gateClosingTime: typeof data.gateClosingTime === 'string'
+          ? new Date(`1970-01-01T${data.gateClosingTime}:00`)
+          : data.gateClosingTime
+      }),
+      ...(data.images && { images: data.images }),
+      ...(data.video && { video: data.video }),
+      ...(data.contactName && { contactName: data.contactName }),
+      ...(data.mobileNo && { mobileNo: data.mobileNo }),
+      ...(data.whatsapp !== undefined && { whatsapp: data.whatsapp }),
+      ...(data.whatsappupdates !== undefined && { whatsappupdates: data.whatsappupdates }),
+      ...(data.preferredTenant && { preferredTenant: data.preferredTenant }),
+      ...(data.preferredGuests && { preferredGuests: data.preferredGuests }),
+      ...(data.restrictions && { restrictions: data.restrictions }),
+      ...(data.propertyDescription && { propertyDescription: data.propertyDescription }),
+      ...(data.currentStep !== undefined && { currentStep: data.currentStep }),
+      ...(data.isDraft !== undefined && { isDraft: data.isDraft }),
+      ...(data.propertyType2 && { propertyType2: data.propertyType2 }),
+      ...(data.availabilityDay && { availabilityDay: data.availabilityDay }),
+      ...(data.availableAllDay !== undefined && { availableAllDay: data.availableAllDay }),
+      ...(data.startTime && { startTime: data.startTime }),
+      ...(data.endTime && { endTime: data.endTime }),
     },
   });
 }
