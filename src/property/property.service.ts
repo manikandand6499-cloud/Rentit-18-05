@@ -16,6 +16,35 @@ import { UpdateLocationDto } from './dto/location.dto';
 import { CreateScheduleDto } from './dto/availability.dto';
 import { UpdatePropertyDto } from './dto/update-property.dto';
 
+function parseGateClosingTime(time: any): Date | null {
+  if (!time) return null;
+  if (time instanceof Date) return time;
+  if (typeof time !== 'string') return null;
+
+  // matches "1:30 PM", "13:30", "01:30 PM", "1:30PM"
+  const match = time.trim().match(/^(\d{1,2}):(\d{2})(?:\s*(AM|PM))?$/i);
+  if (match) {
+    let hours = parseInt(match[1], 10);
+    const minutes = parseInt(match[2], 10);
+    const ampm = match[3];
+
+    if (ampm) {
+      if (ampm.toUpperCase() === 'PM' && hours < 12) hours += 12;
+      if (ampm.toUpperCase() === 'AM' && hours === 12) hours = 0;
+    }
+    const padH = String(hours).padStart(2, '0');
+    const padM = String(minutes).padStart(2, '0');
+    const date = new Date(`1970-01-01T${padH}:${padM}:00.000Z`);
+    return isNaN(date.getTime()) ? null : date;
+  }
+
+  const parsed = new Date(time);
+  if (!isNaN(parsed.getTime())) return parsed;
+  
+  const parsedIso = new Date(`1970-01-01T${time}:00`);
+  return isNaN(parsedIso.getTime()) ? null : parsedIso;
+}
+
 @Injectable()
 export class PropertyService {
   constructor(private prisma: PrismaService) {}
@@ -85,7 +114,7 @@ export class PropertyService {
           noticePeriod: data.noticePeriod,
         }),
         ...(data.gateClosingTime && {
-          gateClosingTime: new Date(`1970-01-01T${data.gateClosingTime}:00`),
+          gateClosingTime: parseGateClosingTime(data.gateClosingTime),
         }),
         currentStep: 2,
       },
@@ -185,12 +214,16 @@ export class PropertyService {
   // GET ALL PROPERTIES
   // Returns _count.propertyViews so the card can show the badge
   // ============================================================
-async getAllProperties(userId: number, city?: string) {
+async getAllProperties(userId?: number, city?: string) {
   return this.prisma.pGDetails.findMany({
     where: {
       isDeleted: false,
-      isSoldOut: false,   // 🔥 ADD THIS
-      userId: { not: userId },
+      isSoldOut: false,
+      isDraft: false,
+
+      ...(userId && {
+        userId: { not: userId },
+      }),
 
       ...(city && {
         city: {
@@ -472,9 +505,7 @@ async updateProperty(id: number, userId: number, data: UpdatePropertyDto) {
       ...(data.availableFrom && { availableFrom: new Date(data.availableFrom) }),
       ...(data.noticePeriod !== undefined && { noticePeriod: data.noticePeriod }),
       ...(data.gateClosingTime && {
-        gateClosingTime: typeof data.gateClosingTime === 'string'
-          ? new Date(`1970-01-01T${data.gateClosingTime}:00`)
-          : data.gateClosingTime
+        gateClosingTime: parseGateClosingTime(data.gateClosingTime),
       }),
       ...(data.images && { images: data.images }),
       ...(data.video && { video: data.video }),

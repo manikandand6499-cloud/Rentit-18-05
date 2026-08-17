@@ -20,7 +20,7 @@ import {
 } from '@nestjs/common';
 
 import { FilesInterceptor, FileInterceptor } from '@nestjs/platform-express';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { JwtAuthGuard, OptionalJwtAuthGuard } from '../auth/jwt-auth.guard';
 import { PropertyService } from './property.service';
 import { CreateBasicDto } from './dto/create-basic.dto';
 import { CreateDetailsDto } from './dto/create-details.dto';
@@ -37,13 +37,13 @@ import { CreateScheduleDto } from './dto/availability.dto';
 import { UpdatePropertyDto } from './dto/update-property.dto';
 
 @Controller('property')
-@UseGuards(JwtAuthGuard)
 export class PropertyController {
   constructor(private readonly propertyService: PropertyService) {}
 
   // ============================================================
   // CREATE BASIC
   // ============================================================
+  @UseGuards(JwtAuthGuard)
   @Post('basic')
   createBasic(@Req() req, @Body() dto: CreateBasicDto) {
     return this.propertyService.createBasic(req.user.userId, dto);
@@ -52,6 +52,7 @@ export class PropertyController {
   // ============================================================
   // LOCATION
   // ============================================================
+  @UseGuards(JwtAuthGuard)
   @Put('location/:id')
   updateLocation(
     @Param('id') id: string,
@@ -68,6 +69,7 @@ export class PropertyController {
   // ============================================================
   // DETAILS
   // ============================================================
+  @UseGuards(JwtAuthGuard)
   @Put(':id/details')
   updateDetails(
     @Param('id') id: string,
@@ -107,6 +109,7 @@ export class PropertyController {
   // ============================================================
   // UPLOAD IMAGES
   // ============================================================
+  @UseGuards(JwtAuthGuard)
   @Post(':id/upload-images')
   @UseInterceptors(FilesInterceptor('files'))
   async uploadImages(
@@ -132,6 +135,7 @@ export class PropertyController {
   // ============================================================
   // UPLOAD VIDEO
   // ============================================================
+  @UseGuards(JwtAuthGuard)
   @Post(':id/upload-video')
   @UseInterceptors(
     FileInterceptor('file', { limits: { fileSize: 100 * 1024 * 1024 } }),
@@ -149,6 +153,7 @@ export class PropertyController {
   // ============================================================
   // CONTACT
   // ============================================================
+  @UseGuards(JwtAuthGuard)
   @Put(':id/contact')
   updateContact(
     @Param('id') id: string,
@@ -165,6 +170,7 @@ export class PropertyController {
   // ============================================================
   // VERIFY
   // ============================================================
+  @UseGuards(JwtAuthGuard)
   @Put(':id/verify')
   verifyProperty(@Param('id') id: string, @Req() req) {
     return this.propertyService.verifyProperty(Number(id), req.user.userId);
@@ -173,14 +179,17 @@ export class PropertyController {
   // ============================================================
   // GET ALL (with city filter + viewscount in response)
   // ============================================================
+  @UseGuards(OptionalJwtAuthGuard)
   @Get('all')
   getAllProperties(@Req() req, @Query('city') city?: string) {
-    return this.propertyService.getAllProperties(req.user.userId, city);
+    const userId = req.user?.userId;
+    return this.propertyService.getAllProperties(userId, city);
   }
 
   // ============================================================
   // MY PROPERTIES
   // ============================================================
+  @UseGuards(JwtAuthGuard)
   @Get('my')
   getMyProperties(@Req() req) {
     return this.propertyService.getMyProperties(req.user.userId);
@@ -189,6 +198,7 @@ export class PropertyController {
   // ============================================================
   // AMENITIES
   // ============================================================
+  @UseGuards(JwtAuthGuard)
   @Put(':id/amenities')
   updateAmenities(
     @Param('id', ParseIntPipe) id: number,
@@ -201,6 +211,7 @@ export class PropertyController {
   // ============================================================
   // DELETE
   // ============================================================
+  @UseGuards(JwtAuthGuard)
   @Put(':id/delete')
   deleteProperty(@Param('id') id: string, @Req() req) {
     return this.propertyService.deleteProperty(Number(id), req.user.userId);
@@ -211,8 +222,9 @@ export class PropertyController {
   // ✅ POST /:id/view — must be declared BEFORE the wildcard GET /:id
   //    to avoid NestJS routing conflicts
   // ============================================================
-@Post(':id/view')
-recordView(
+  @UseGuards(JwtAuthGuard)
+  @Post(':id/view')
+  recordView(
   @Param('id', ParseIntPipe) id: number,
   @Req() req,
 ) {
@@ -223,6 +235,7 @@ recordView(
   // SINGLE PROPERTY — KEEP THIS LAST
   // Wildcard GET /:id would swallow /all /my /stats etc. if placed earlier
   // ============================================================
+  @UseGuards(OptionalJwtAuthGuard)
   @Get(':id')
   getProperty(@Param('id') id: string) {
     const numId = Number(id);
@@ -232,47 +245,50 @@ recordView(
     return this.propertyService.getProperty(numId);
   }
 
-@Put(':id/availability')
-updateAvailability(
-  @Param('id', ParseIntPipe) id: number,
-  @Req() req,
-  @Body() dto: CreateScheduleDto,
-) {
-  return this.propertyService.updateSchedule(
-    id,
-    req.user.userId,
-    dto,
-  );
-}
+  @UseGuards(JwtAuthGuard)
+  @Put(':id/availability')
+  updateAvailability(
+    @Param('id', ParseIntPipe) id: number,
+    @Req() req,
+    @Body() dto: CreateScheduleDto,
+  ) {
+    return this.propertyService.updateSchedule(
+      id,
+      req.user.userId,
+      dto,
+    );
+  }
 
-@Put(':id/soldout')
-markSoldOut(
-  @Param('id', ParseIntPipe) id: number,
-  @Req() req,
-  @Body() body: { reason: string },
-) {
-  console.log('PROPERTY ID =>', id);
-  console.log('USER =>', req.user);
-  console.log('BODY =>', body);
+  @UseGuards(JwtAuthGuard)
+  @Put(':id/soldout')
+  markSoldOut(
+    @Param('id', ParseIntPipe) id: number,
+    @Req() req,
+    @Body() body: { reason: string },
+  ) {
+    console.log('PROPERTY ID =>', id);
+    console.log('USER =>', req.user);
+    console.log('BODY =>', body);
 
-  return this.propertyService.markSoldOut(
-    id,
-    req.user.userId,
-    body.reason,
-  );
-}
+    return this.propertyService.markSoldOut(
+      id,
+      req.user.userId,
+      body.reason,
+    );
+  }
 
-@Put(':id')
-updateProperty(
-  @Param('id', ParseIntPipe) id: number,
-  @Req() req,
-  @Body() dto: UpdatePropertyDto,
-) {
-  return this.propertyService.updateProperty(
-    id,
-    req.user.userId,
-    dto,
-  );
-}
+  @UseGuards(JwtAuthGuard)
+  @Put(':id')
+  updateProperty(
+    @Param('id', ParseIntPipe) id: number,
+    @Req() req,
+    @Body() dto: UpdatePropertyDto,
+  ) {
+    return this.propertyService.updateProperty(
+      id,
+      req.user.userId,
+      dto,
+    );
+  }
   
 }

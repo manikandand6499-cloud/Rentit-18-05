@@ -45,6 +45,11 @@ export class CommercialController {
     return this.commercialService.findAll();
   }
 
+  @Get("all")
+  findAllAlias() {
+    return this.commercialService.findAll();
+  }
+
   // ──────────────────────────────────────────────
   // GET ONE
   // ──────────────────────────────────────────────
