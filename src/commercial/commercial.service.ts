@@ -136,6 +136,17 @@ async findAll() {
   return data;
 }
 
+  async getMyCommercial(userId: number) {
+    return this.prisma.commercial.findMany({
+      where: {
+        userId,
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+  }
+
   // ──────────────────────────────────────────────
   // FIND ONE
   // ──────────────────────────────────────────────

@@ -50,6 +50,13 @@ export class CommercialController {
     return this.commercialService.findAll();
   }
 
+  @UseGuards(JwtAuthGuard)
+  @Get("my")
+  getMyCommercial(@Req() req) {
+    const userId = req.user.id ?? req.user.userId;
+    return this.commercialService.getMyCommercial(userId);
+  }
+
   // ──────────────────────────────────────────────
   // GET ONE
   // ──────────────────────────────────────────────
