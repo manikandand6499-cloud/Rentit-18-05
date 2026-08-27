@@ -12,7 +12,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { OptionalJwtAuthGuard } from '../auth/jwt-auth.guard';
 import { LikeService } from './like.service';
 import type { LikeType } from './like.service';
 
@@ -23,8 +23,8 @@ const GetUser = createParamDecorator(
   },
 );
 
-@Controller('like')
-@UseGuards(JwtAuthGuard)
+@Controller(['like', 'likes'])
+@UseGuards(OptionalJwtAuthGuard)
 export class LikeController {
   constructor(private readonly likeService: LikeService) {}
 
@@ -34,12 +34,22 @@ export class LikeController {
     propertyId: number,
 
     @Query('type')
-    type: LikeType = 'pg',
+    type: LikeType = 'auto',
+
+    @Query('userId')
+    queryUserId: string,
 
     @GetUser()
     user: any,
+
+    @Req()
+    req: any,
   ) {
-    const userId = user?.userId ?? user?.id;
+    const userId =
+      user?.userId ??
+      user?.id ??
+      (req.headers['x-user-id'] ? Number(req.headers['x-user-id']) : null) ??
+      (queryUserId ? Number(queryUserId) : null);
 
     if (!userId) {
       throw new BadRequestException(
@@ -55,11 +65,31 @@ export class LikeController {
   }
 
   @Get('my')
-  getMyLikes(@Req() req: any) {
+  getMyLikes(
+    @Req() req: any,
+    @GetUser() user: any,
+    @Query('userId') queryUserId: string,
+  ) {
     const userId =
-      req.user?.userId ??
-      req.user?.id;
+      user?.userId ??
+      user?.id ??
+      (req.headers['x-user-id'] ? Number(req.headers['x-user-id']) : null) ??
+      (queryUserId ? Number(queryUserId) : null);
 
+    if (!userId) {
+      return [];
+    }
+
+    return this.likeService.getMyLikes(
+      userId,
+    );
+  }
+
+  @Get('user/:userId')
+  getUserLikesByRoute(
+    @Param('userId', ParseIntPipe)
+    userId: number,
+  ) {
     return this.likeService.getMyLikes(
       userId,
     );

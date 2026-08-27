@@ -108,6 +108,7 @@ export class FlatmateService {
         ...(dto.secondaryNumber  !== undefined && { secondaryNumber:  dto.secondaryNumber }),
         ...(dto.waterSupply      !== undefined && { waterSupply:      dto.waterSupply }),
         ...(dto.directionsTip    !== undefined && { directionsTip:    dto.directionsTip }),
+        ...(dto.images           !== undefined && { images:           dto.images }),
       },
     });
   }
@@ -224,6 +225,7 @@ async getAllFlatmates() {
         ...(dto.secondaryNumber  !== undefined && { secondaryNumber:  dto.secondaryNumber }),
         ...(dto.waterSupply      !== undefined && { waterSupply:      dto.waterSupply }),
         ...(dto.directionsTip    !== undefined && { directionsTip:    dto.directionsTip }),
+        ...(dto.images           !== undefined && { images:           dto.images }),
 
         // ── Availability ─────────────────────
         ...(dto.availabilityDay  !== undefined && { availabilityDay:  dto.availabilityDay }),

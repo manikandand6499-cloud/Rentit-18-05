@@ -214,4 +214,8 @@ export class FlatmateDto {
   @IsOptional()
   @IsBoolean()
   availableAllDay?: boolean;
+
+  @IsOptional()
+  @IsString({ each: true })
+  images?: string[];
 }

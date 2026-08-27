@@ -13,8 +13,8 @@ export class CreateVisitDto {
   @IsNotEmpty()
   propertyId: number | undefined;
 
-  // 📅 Date (YYYY-MM-DD)
-  @IsDateString()
+  // 📅 Date (YYYY-MM-DD or ISO)
+  @IsString()
   @IsNotEmpty()
   date: string | undefined;
 

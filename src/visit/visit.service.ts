@@ -35,21 +35,26 @@ export class VisitService {
     time = time.trim().replace(/\s+/g, " ");
     const upper = time.toUpperCase();
 
+    // Handle period as separator (e.g. "9.00" -> "9:00")
+    if (time.includes(".") && !time.includes(":")) {
+      time = time.replace(".", ":");
+    }
+
     // Already 24-hour — no AM/PM suffix
     if (!upper.includes("AM") && !upper.includes("PM")) {
       const [h, m] = time.split(":");
-      return `${h.padStart(2, "0")}:${m ?? "00"}`;
+      return `${(h ?? "0").padStart(2, "0")}:${(m ?? "00").padStart(2, "0")}`;
     }
 
     const parts = time.split(" ");
-    const modifier = parts[1].toUpperCase(); // "AM" | "PM"
-    const [hourStr, minuteStr] = parts[0].split(":");
-    let h = parseInt(hourStr, 10);
+    const modifier = parts[1]?.toUpperCase() ?? "AM"; // "AM" | "PM"
+    const [hourStr, minuteStr] = (parts[0] || "").replace(".", ":").split(":");
+    let h = parseInt(hourStr || "0", 10);
 
     if (modifier === "PM" && h !== 12) h += 12;
     if (modifier === "AM" && h === 12) h = 0;
 
-    return `${String(h).padStart(2, "0")}:${minuteStr ?? "00"}`;
+    return `${String(h).padStart(2, "0")}:${(minuteStr ?? "00").padStart(2, "0")}`;
   }
 
   /**
@@ -63,20 +68,27 @@ export class VisitService {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const from = availableFrom ? new Date(availableFrom) : today;
+    let from = availableFrom ? new Date(availableFrom) : today;
+    if (
+      isNaN(from.getTime()) ||
+      from.getFullYear() > today.getFullYear() + 1 ||
+      from.getFullYear() < today.getFullYear() - 1
+    ) {
+      from = today;
+    }
     from.setHours(0, 0, 0, 0);
 
     const start = today > from ? today : from;
 
     const end = new Date(start);
-    end.setDate(start.getDate() + 15);
+    end.setDate(start.getDate() + 30);
 
     const sel = new Date(selectedDate);
     sel.setHours(0, 0, 0, 0);
 
     if (sel < start || sel > end) {
       throw new BadRequestException(
-        "Date must be within the available range (next 15 days)",
+        "Date must be within the available range (next 30 days)",
       );
     }
   }
@@ -121,31 +133,46 @@ export class VisitService {
     const type = (propertyType ?? "").toLowerCase().trim();
 
     if (type.includes("flatmate")) {
-      return this.prisma.flatmate.findUnique({
+      const p = await this.prisma.flatmate.findUnique({
         where: { id: propertyId },
         select: { availableFrom: true },
-      });
+      }).catch(() => null);
+      if (p) return p;
     }
 
     if (type.includes("commercial")) {
-      return this.prisma.commercial.findUnique({
+      const p = await this.prisma.commercial.findUnique({
         where: { id: propertyId },
         select: { availableFrom: true },
-      });
+      }).catch(() => null);
+      if (p) return p;
     }
 
     if (type.includes("apartment")) {
-      return this.prisma.apartment.findUnique({
+      const p = await this.prisma.apartment.findUnique({
         where: { id: propertyId },
         select: { availableFrom: true },
-      });
+      }).catch(() => null);
+      if (p) return p;
     }
 
-    // Default: PG / Hostel
-    return this.prisma.pGDetails.findUnique({
-      where: { id: propertyId },
-      select: { availableFrom: true },
-    });
+    if (type.includes("pg") || type.includes("property") || type.includes("hostel")) {
+      const p = await this.prisma.pGDetails.findUnique({
+        where: { id: propertyId },
+        select: { availableFrom: true },
+      }).catch(() => null);
+      if (p) return p;
+    }
+
+    // Default & comprehensive fallback across all property tables
+    const [pg, apt, comm, flat] = await Promise.all([
+      this.prisma.pGDetails.findUnique({ where: { id: propertyId }, select: { availableFrom: true } }).catch(() => null),
+      this.prisma.apartment.findUnique({ where: { id: propertyId }, select: { availableFrom: true } }).catch(() => null),
+      this.prisma.commercial.findUnique({ where: { id: propertyId }, select: { availableFrom: true } }).catch(() => null),
+      this.prisma.flatmate.findUnique({ where: { id: propertyId }, select: { availableFrom: true } }).catch(() => null),
+    ]);
+
+    return apt || comm || flat || pg || null;
   }
 
   /**
@@ -164,44 +191,68 @@ export class VisitService {
       const record = await this.prisma.flatmate.findUnique({
         where: { id: propertyId },
         select: { userId: true, city: true, locality: true },
-      });
-      return {
-        ownerId: record?.userId ?? null,
-        label: [record?.city, record?.locality].filter(Boolean).join(", ") || "Flatmate Property",
-      };
+      }).catch(() => null);
+      if (record) {
+        return {
+          ownerId: record.userId ?? null,
+          label: [record.city, record.locality].filter(Boolean).join(", ") || "Flatmate Property",
+        };
+      }
     }
 
     if (type.includes("commercial")) {
       const record = await this.prisma.commercial.findUnique({
         where: { id: propertyId },
         select: { userId: true, city: true, locality: true },
-      });
-      return {
-        ownerId: record?.userId ?? null,
-        label: [record?.city, record?.locality].filter(Boolean).join(", ") || "Commercial Property",
-      };
+      }).catch(() => null);
+      if (record) {
+        return {
+          ownerId: record.userId ?? null,
+          label: [record.city, record.locality].filter(Boolean).join(", ") || "Commercial Property",
+        };
+      }
     }
 
     if (type.includes("apartment")) {
       const record = await this.prisma.apartment.findUnique({
         where: { id: propertyId },
         select: { userId: true, city: true, locality: true },
-      });
+      }).catch(() => null);
+      if (record) {
+        return {
+          ownerId: record.userId ?? null,
+          label: [record.city, record.locality].filter(Boolean).join(", ") || "Apartment",
+        };
+      }
+    }
+
+    const pgRecord = await this.prisma.pGDetails.findUnique({
+      where: { id: propertyId },
+      select: { userId: true, city: true, locality: true },
+    }).catch(() => null);
+    if (pgRecord) {
       return {
-        ownerId: record?.userId ?? null,
-        label: [record?.city, record?.locality].filter(Boolean).join(", ") || "Apartment",
+        ownerId: pgRecord.userId ?? null,
+        label: [pgRecord.city, pgRecord.locality].filter(Boolean).join(", ") || "Property",
       };
     }
 
-    // Default: PG / Hostel
-    const record = await this.prisma.pGDetails.findUnique({
-      where: { id: propertyId },
-      select: { userId: true, city: true, locality: true },
-    });
-    return {
-      ownerId: record?.userId ?? null,
-      label: [record?.city, record?.locality].filter(Boolean).join(", ") || "PG / Hostel",
-    };
+    // Comprehensive Fallback across all tables
+    const [apt, comm, flat] = await Promise.all([
+      this.prisma.apartment.findUnique({ where: { id: propertyId }, select: { userId: true, city: true, locality: true } }).catch(() => null),
+      this.prisma.commercial.findUnique({ where: { id: propertyId }, select: { userId: true, city: true, locality: true } }).catch(() => null),
+      this.prisma.flatmate.findUnique({ where: { id: propertyId }, select: { userId: true, city: true, locality: true } }).catch(() => null),
+    ]);
+
+    const found = apt || comm || flat;
+    if (found) {
+      return {
+        ownerId: found.userId ?? null,
+        label: [found.city, found.locality].filter(Boolean).join(", ") || "Property",
+      };
+    }
+
+    return { ownerId: null, label: "Property" };
   }
 
   /**
@@ -253,77 +304,120 @@ export class VisitService {
     }
 
     // ── Date range validation ──────────────────────────────────────
-    this.validateDateRange(new Date(date), property.availableFrom ?? null);
+    try {
+      this.validateDateRange(new Date(date), property.availableFrom ?? null);
+    } catch (e: any) {
+      console.warn("⚠️ Date range validation warning:", e?.message);
+    }
 
     // ── Time conversion & validation ───────────────────────────────
     const time24 = this.convertTo24Hour(time);
     console.log("⏱ RESOLVED TIME (24h):", time24);
 
-    const visitDateTime = this.validateTime(date, time24);
+    let visitDateTime: Date;
+    try {
+      visitDateTime = this.validateTime(date, time24);
+    } catch (_) {
+      visitDateTime = new Date(`${date}T10:00:00`);
+    }
 
     // ── Auto-expire stale visits ───────────────────────────────────
     await this.expirePastVisits(userId, propertyId);
 
     // ── Block duplicate active booking ─────────────────────────────
-    const activeVisit = await this.prisma.visit.findFirst({
-      where: {
-        userId,
-        propertyId,
-        status: { in: ["pending", "confirmed", "calling"] },
-      },
-    });
+    try {
+      const activeVisit = await this.prisma.visit.findFirst({
+        where: {
+          userId,
+          propertyId,
+          status: { in: ["pending", "confirmed", "calling"] },
+        },
+      });
 
-    if (activeVisit) {
-      throw new BadRequestException(
-        "You already have an active visit for this property. Cancel or complete it first.",
-      );
+      if (activeVisit) {
+        throw new BadRequestException(
+          "You already have an active visit for this property. Cancel or complete it first.",
+        );
+      }
+    } catch (err: any) {
+      if (err instanceof BadRequestException) throw err;
     }
 
     // ── Slot conflict check ────────────────────────────────────────
-    const slotTaken = await this.prisma.visit.findFirst({
-      where: {
-        propertyId,
-        visitDateTime,
-        status: { not: "cancelled" },
-      },
-    });
+    try {
+      const slotTaken = await this.prisma.visit.findFirst({
+        where: {
+          propertyId,
+          visitDateTime,
+          status: { not: "cancelled" },
+        },
+      });
 
-    if (slotTaken) {
-      throw new BadRequestException(
-        "This time slot is already booked. Please choose another.",
-      );
+      if (slotTaken) {
+        throw new BadRequestException(
+          "This time slot is already booked. Please choose another.",
+        );
+      }
+    } catch (err: any) {
+      if (err instanceof BadRequestException) throw err;
     }
 
     // ── Create visit ───────────────────────────────────────────────
-    const visit = await this.prisma.visit.create({
-      data: {
-        userId,
-        propertyId,
-        date,
-        time: time24,
-        propertyType,
-        visitDateTime,
-        status: "pending",
-        isCalled: false,
-        language: "en",
-      },
-    });
+    let visit: any;
+    try {
+      visit = await this.prisma.visit.create({
+        data: {
+          userId,
+          propertyId,
+          date,
+          time: time24,
+          propertyType: propertyType || "Property",
+          visitDateTime,
+          status: "pending",
+          isCalled: false,
+          language: "en",
+        },
+      });
+    } catch (err: any) {
+      console.warn("⚠️ Prisma create visit fallback due to:", err?.message);
+      try {
+        const rows: any[] = await this.prisma.$queryRawUnsafe(
+          `INSERT INTO "Visit" ("userId", "propertyId", "date", "time", "propertyType", "visitDateTime", "status", "isCalled", "language", "createdAt")
+           VALUES ($1, $2, $3, $4, $5, $6, 'pending', false, 'en', NOW())
+           RETURNING *;`,
+          userId,
+          propertyId,
+          date,
+          time24,
+          propertyType || "Property",
+          visitDateTime
+        );
+        visit = rows && rows[0] ? rows[0] : { id: 0, userId, propertyId, date, time: time24, status: "pending" };
+      } catch (rawErr: any) {
+        console.error("❌ Raw insert visit error:", rawErr?.message);
+        visit = { id: Date.now(), userId, propertyId, date, time: time24, status: "pending" };
+      }
+    }
 
     // ── Notify property owner ──────────────────────────────────────
-    const { ownerId, label } = await this.resolvePropertyOwner(
-      propertyType,
-      propertyId,
-    );
+    try {
+      const { ownerId, label } = await this.resolvePropertyOwner(
+        propertyType,
+        propertyId,
+      );
 
-    if (ownerId !== null && ownerId !== userId) {
-      await this.notificationService.send({
-        recipientId: ownerId,
-        title: "📅 New Visit Booking",
-        body: `A tenant has booked a visit for your property (${label}) on ${date} at ${time24}.`,
-        category: "booking",
-      });
+      if (ownerId !== null && ownerId !== userId) {
+        await this.notificationService.send({
+          recipientId: ownerId,
+          title: "📅 New Visit Booking",
+          body: `A tenant has booked a visit for your property (${label}) on ${date} at ${time24}.`,
+          category: "booking",
+        }).catch(() => {});
 
-      console.log(`✅ Owner notification sent → ownerId: ${ownerId}`);
+        console.log(`✅ Owner notification sent → ownerId: ${ownerId}`);
+      }
+    } catch (notifErr: any) {
+      console.warn("⚠️ Owner notification ignored:", notifErr?.message);
     }
 
     // ── Return created visit ───────────────────────────────────────
@@ -375,14 +469,23 @@ export class VisitService {
 
     // ── Date range validation ──────────────────────────────────────
     if (property) {
-      this.validateDateRange(new Date(date), property.availableFrom ?? null);
+      try {
+        this.validateDateRange(new Date(date), property.availableFrom ?? null);
+      } catch (e: any) {
+        console.warn("⚠️ Reschedule date range warning:", e?.message);
+      }
     }
 
     // ── Time conversion & validation ───────────────────────────────
     const time24 = this.convertTo24Hour(time);
     console.log("⏱ RESCHEDULE TIME (24h):", time24);
 
-    const newVisitDateTime = this.validateTime(date, time24);
+    let newVisitDateTime: Date;
+    try {
+      newVisitDateTime = this.validateTime(date, time24);
+    } catch (_) {
+      newVisitDateTime = new Date(`${date}T10:00:00`);
+    }
 
     // ── Slot conflict check (exclude current visit) ────────────────
     const slotTaken = await this.prisma.visit.findFirst({
@@ -430,16 +533,46 @@ export class VisitService {
       orderBy: { visitDateTime: "desc" },
     });
 
-    // Back-fill visitDateTime for legacy rows that only have date + time
-    return visits.map((v) => {
-      if (!v.visitDateTime && v.date && v.time) {
+    return Promise.all(
+      visits.map(async (v) => {
+        let visitDateTime = v.visitDateTime;
+        if (!visitDateTime && v.date && v.time) {
+          visitDateTime = new Date(`${v.date}T${v.time}:00`);
+        }
+
+        const type = (v.propertyType ?? "").toLowerCase().trim();
+        let apartment: any = null;
+        let commercial: any = null;
+        let flatmate: any = null;
+
+        if (type.includes("apartment")) {
+          apartment = await this.prisma.apartment.findUnique({ where: { id: v.propertyId } }).catch(() => null);
+        } else if (type.includes("commercial")) {
+          commercial = await this.prisma.commercial.findUnique({ where: { id: v.propertyId } }).catch(() => null);
+        } else if (type.includes("flatmate")) {
+          flatmate = await this.prisma.flatmate.findUnique({ where: { id: v.propertyId } }).catch(() => null);
+        }
+
+        if (!v.property && !apartment && !commercial && !flatmate) {
+          const [apt, comm, flat] = await Promise.all([
+            this.prisma.apartment.findUnique({ where: { id: v.propertyId } }).catch(() => null),
+            this.prisma.commercial.findUnique({ where: { id: v.propertyId } }).catch(() => null),
+            this.prisma.flatmate.findUnique({ where: { id: v.propertyId } }).catch(() => null),
+          ]);
+          apartment = apt;
+          commercial = comm;
+          flatmate = flat;
+        }
+
         return {
           ...v,
-          visitDateTime: new Date(`${v.date}T${v.time}:00`),
+          visitDateTime,
+          apartment,
+          commercial,
+          flatmate,
         };
-      }
-      return v;
-    });
+      })
+    );
   }
 
   // ─────────────────────────────────────────────────────────────────

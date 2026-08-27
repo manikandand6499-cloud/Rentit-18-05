@@ -8,7 +8,8 @@ export const uploadToR2 = async (
   file: Express.Multer.File
 ) => {
 
-  const key = `property/${Date.now()}-${file.originalname}`;
+  const safeName = (file.originalname || 'image.jpg').replace(/[^a-zA-Z0-9.-]/g, '_');
+  const key = `property/${Date.now()}-${safeName}`;
 
   await s3.send(
     new PutObjectCommand({

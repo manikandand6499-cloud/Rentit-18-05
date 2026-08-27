@@ -37,6 +37,14 @@ export class ApartmentController {
     private readonly apartmentService: ApartmentService,
   ) {}
 
+  private getUserId(req: any): number {
+    const uid = req.user?.userId ?? req.user?.id;
+    if (!uid) {
+      throw new BadRequestException('User not found in request');
+    }
+    return Number(uid);
+  }
+
   // =========================================================
   // CREATE APARTMENT
   // =========================================================
@@ -46,19 +54,15 @@ export class ApartmentController {
     @Body() dto: CreateApartmentDto,
     @Req() req,
   ) {
-    console.log('REQ USER =>', req.user);
-
-    if (!req.user) {
-      throw new BadRequestException('User not found in request');
-    }
-
-    return this.apartmentService.createApartment(dto, req.user.id);
+    const userId = this.getUserId(req);
+    return this.apartmentService.createApartment(dto, userId);
   }
 
   @UseGuards(JwtAuthGuard)
   @Get('my')
   getMyApartments(@Req() req) {
-    return this.apartmentService.getMyApartments(req.user.id);
+    const userId = this.getUserId(req);
+    return this.apartmentService.getMyApartments(userId);
   }
 
   // =========================================================
@@ -90,11 +94,12 @@ export class ApartmentController {
     @Body() dto: UpdateApartmentDto,
     @Req() req,
   ) {
+    const userId = this.getUserId(req);
     console.log('REQ USER =>', req.user);
-    console.log('REQ USER ID =>', req.user?.id);
+    console.log('EXTRACTED USER ID =>', userId);
     console.log('APARTMENT ID =>', id);
 
-    return this.apartmentService.updateApartment(id, dto, req.user.id);
+    return this.apartmentService.updateApartment(id, dto, userId);
   }
 
   // =========================================================
@@ -107,7 +112,8 @@ export class ApartmentController {
     @Body() dto: AdditionalDetailsDto,
     @Req() req,
   ) {
-    return this.apartmentService.additionalDetails(id, dto, req.user.id);
+    const userId = this.getUserId(req);
+    return this.apartmentService.additionalDetails(id, dto, userId);
   }
 
   // =========================================================
@@ -122,6 +128,7 @@ export class ApartmentController {
     @Body('existingImages') existingImages: string,
     @Req() req,
   ) {
+    const userId = this.getUserId(req);
     const oldImages: string[] = existingImages
       ? JSON.parse(existingImages)
       : [];
@@ -137,7 +144,7 @@ export class ApartmentController {
 
     return this.apartmentService.saveImages(
       id,
-      req.user.id,
+      userId,
       [...oldImages, ...newUrls],
     );
   }
@@ -159,13 +166,14 @@ export class ApartmentController {
     @UploadedFile() file: Express.Multer.File,
     @Req() req,
   ) {
+    const userId = this.getUserId(req);
     if (!file) {
       throw new BadRequestException('No video file uploaded');
     }
 
     const url = await uploadToR2(file);
 
-    return this.apartmentService.saveVideo(id, req.user.id, url);
+    return this.apartmentService.saveVideo(id, userId, url);
   }
 
   // =========================================================
@@ -178,7 +186,8 @@ export class ApartmentController {
     @Body() dto: ApartmentDto,
     @Req() req,
   ) {
-    return this.apartmentService.saveAvailability(id, req.user.id, dto);
+    const userId = this.getUserId(req);
+    return this.apartmentService.saveAvailability(id, userId, dto);
   }
 
   // =========================================================
@@ -190,20 +199,22 @@ export class ApartmentController {
     @Param('id', ParseIntPipe) id: number,
     @Req() req,
   ) {
-    return this.apartmentService.recordUniqueView(id, req.user.id);
+    const userId = this.getUserId(req);
+    return this.apartmentService.recordUniqueView(id, userId);
   }
 
-@UseGuards(JwtAuthGuard)
-@Put(':id/soldout')
-markSoldOut(
-  @Param('id', ParseIntPipe) id: number,
-  @Req() req,
-  @Body() body: { reason: string },
-) {
-  return this.apartmentService.markSoldOut(
-    id,
-    req.user.id,   // ← was req.user.userId
-    body.reason,
-  );
-}
+  @UseGuards(JwtAuthGuard)
+  @Put(':id/soldout')
+  markSoldOut(
+    @Param('id', ParseIntPipe) id: number,
+    @Req() req,
+    @Body() body: { reason: string },
+  ) {
+    const userId = this.getUserId(req);
+    return this.apartmentService.markSoldOut(
+      id,
+      userId,
+      body.reason,
+    );
+  }
 }
